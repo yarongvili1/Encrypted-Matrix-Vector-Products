@@ -37,7 +37,7 @@ void BlockMatrixVectorProductByColumn(const uint32_t* mat, const uint32_t* vec, 
 {
 
     int b = m / s;
-    for (int i = 0; i < s * m; ++i) {
+    for (int i = 0; i < s * n; ++i) {
         result[i] = 0;
     }
 
