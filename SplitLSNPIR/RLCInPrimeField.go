@@ -5,15 +5,16 @@ import (
 	"math/rand"
 )
 
+// Generate D = (I | P) with dimension L x (L + K)
 func GenerateRLC(L, K, p uint32, seed int64) [][]uint32 {
-	randomP := GenerateRandomColsOfD(K, L, p, seed)
-	matrix := make([][]uint32, K)
+	randomP := GenerateRandomColsOfD(L, K, p, seed)
+	matrix := make([][]uint32, L)
 
-	for i := uint32(0); i < K; i++ {
+	for i := uint32(0); i < L; i++ {
 		matrix[i] = make([]uint32, L+K)
 		matrix[i][i] = 1
-		for j := uint32(0); j < L; j++ {
-			matrix[i][K+j] = randomP[i][j]
+		for j := uint32(0); j < K; j++ {
+			matrix[i][L+j] = randomP[i][j]
 		}
 	}
 
