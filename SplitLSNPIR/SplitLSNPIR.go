@@ -21,7 +21,7 @@ type SecretKey struct {
 }
 
 // N = K + L denotes the length of the codeword
-// Encoding Matrix C with dimension N x K
+// Encoding Matrix D with dimension N x L
 // Original Data Matrix has dimension M x N
 type SlsnParams struct {
 	PrimeField uint32
@@ -47,41 +47,40 @@ func (spir *SlsnPIR) KeyGen(seed int64) SecretKey {
 	return SecretKey{
 		LinearCodeKey:   seed,
 		TDMKey:          seed + 1,
-		PreLoadedMatrix: Generate1DDualSpaceRandomMatrix(params.K, params.L, params.PrimeField, seed),
+		PreLoadedMatrix: Generate1DDualSpaceRandomMatrix(params.L, params.K, params.PrimeField, seed),
 	}
 }
 
 func (spir *SlsnPIR) Encode(sk SecretKey, matrix pir.Matrix) *pir.Matrix {
 	params := spir.Params
-	rlcMatrix := Generate1DRLCMatrix(params.K, params.L, params.PrimeField, sk.LinearCodeKey)
+	rlcMatrix := Generate1DRLCMatrix(params.L, params.K, params.PrimeField, sk.LinearCodeKey)
 
-	N := params.K + params.L
-	data := make([]uint32, matrix.Rows*N)
+	data := make([]uint32, matrix.Rows*params.N)
 
 	for i := uint32(0); i < matrix.Rows; i++ {
-		for j := uint32(0); j < params.K; j++ {
-			data[i*N+j] = matrix.Data[i*params.K+j]
+		for j := uint32(0); j < params.L; j++ {
+			data[i*params.N+j] = matrix.Data[i*params.L+j]
 		}
 
 		C.BlockMatrixVectorProduct(
 			(*C.uint32_t)(unsafe.Pointer(&rlcMatrix[0])),
 			(*C.uint32_t)(unsafe.Pointer(&matrix.Data[i*matrix.Cols])),
-			(*C.uint32_t)(unsafe.Pointer(&data[i*N+params.K])),
-			C.uint32_t(params.K), C.uint32_t(params.L), C.uint32_t(1), C.uint32_t(params.PrimeField))
+			(*C.uint32_t)(unsafe.Pointer(&data[i*params.N+params.L])),
+			C.uint32_t(params.L), C.uint32_t(params.K), C.uint32_t(1), C.uint32_t(params.PrimeField))
 	}
 
 	// Transpose to be easy for Row linear combination
-	transposedData := make([]uint32, N*matrix.Rows)
+	transposedData := make([]uint32, params.N*matrix.Rows)
 	idx := 0
-	for i := uint32(0); i < N; i++ {
+	for i := uint32(0); i < params.N; i++ {
 		for j := uint32(0); j < matrix.Rows; j++ {
-			transposedData[idx] = data[j*N+i]
+			transposedData[idx] = data[j*params.N+i]
 			idx += 1
 		}
 	}
 
 	return &pir.Matrix{
-		Rows: N,
+		Rows: params.N,
 		Cols: matrix.Rows,
 		Data: transposedData,
 	}
@@ -93,30 +92,30 @@ func (spir *SlsnPIR) Query(sk SecretKey, queryIndex uint64) ([]uint32, []uint32)
 	// Sample Vector From Nullspace
 	PofDual := sk.PreLoadedMatrix
 	if len(PofDual) == 0 {
-		PofDual = Generate1DDualSpaceRandomMatrix(params.K, params.L, params.PrimeField, sk.LinearCodeKey)
+		PofDual = Generate1DDualSpaceRandomMatrix(params.L, params.K, params.PrimeField, sk.LinearCodeKey)
 	}
 
-	nullspaceCoeff := pir.RandomPrimeFieldVector(params.L, params.PrimeField)
+	nullspaceCoeff := pir.RandomPrimeFieldVector(params.K, params.PrimeField)
 
-	queryVector := make([]uint32, params.K+params.L)
+	queryVector := make([]uint32, params.L+params.K)
 
 	C.BlockMatrixVectorProduct(
 		(*C.uint32_t)(unsafe.Pointer(&PofDual[0])),
 		(*C.uint32_t)(unsafe.Pointer(&nullspaceCoeff[0])),
 		(*C.uint32_t)(unsafe.Pointer(&queryVector[0])),
-		C.uint32_t(params.L), C.uint32_t(params.K), C.uint32_t(1), C.uint32_t(params.PrimeField))
+		C.uint32_t(params.K), C.uint32_t(params.L), C.uint32_t(1), C.uint32_t(params.PrimeField))
 
-	for i := uint32(0); i < params.L; i++ {
-		queryVector[params.K+i] = nullspaceCoeff[i]
+	for i := uint32(0); i < params.K; i++ {
+		queryVector[params.L+i] = nullspaceCoeff[i]
 	}
 
 	// Add queryIndex bit by 1
-	queryVector[queryIndex%uint64(params.K)] = (queryVector[queryIndex%uint64(params.K)] + 1) % params.PrimeField
+	queryVector[queryIndex%uint64(params.L)] = (queryVector[queryIndex%uint64(params.L)] + 1) % params.PrimeField
 
 	// For Each Block multiply by a non-zero scalar
 	coeff := pir.RandomSplitLSNNoiseCoeff(params.NumBlocks, params.PrimeField)
 
-	blkSize := (params.K + params.L) / params.NumBlocks
+	blkSize := params.N / params.NumBlocks
 
 	for i := uint32(0); i < params.NumBlocks; i++ {
 		for j := uint32(0); j < blkSize; j++ {
@@ -160,5 +159,5 @@ func (spir *SlsnPIR) Decode(sk SecretKey, index uint64, response []uint32, aux [
 		(*C.uint32_t)(unsafe.Pointer(&result[0])),
 		C.uint32_t(spir.Params.NumBlocks), C.uint32_t(params.M), C.uint32_t(1), C.uint32_t(params.PrimeField))
 
-	return result[index/uint64(params.K)]
+	return result[index/uint64(params.L)]
 }

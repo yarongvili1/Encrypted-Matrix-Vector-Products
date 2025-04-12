@@ -56,4 +56,4 @@ void SampleVectorFromNullSpace(uint32_t* out, uint32_t K, uint32_t L, uint32_t p
     }
 }
 
-} // extern "C"
+}

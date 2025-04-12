@@ -10,9 +10,9 @@ import (
 
 func TestFullFunctionOfSLSNPIR(t *testing.T) {
 	row := uint32(1 << 14)
-	k := uint32(1 << 14)
+	l := uint32(1 << 14)
 	s := uint32(16)
-	l := uint32(16)
+	k := uint32(16)
 	n := k + l
 	// Largest Prime in 32 bits
 	p := uint32(1<<32 - 5)
@@ -27,11 +27,11 @@ func TestFullFunctionOfSLSNPIR(t *testing.T) {
 		L:          l,
 	}}
 
-	matrix := pir.GeneratePrimeFieldMatrix(pi.Params.M, pi.Params.K, p, seed)
+	matrix := pir.GeneratePrimeFieldMatrix(pi.Params.M, pi.Params.L, p, seed)
 
-	fmt.Printf("Running PIR with Database %d * %d \n", pi.Params.M, pi.Params.K)
+	fmt.Printf("Running PIR with Database %d * %d \n", pi.Params.M, pi.Params.L)
 
-	queryIndex := rand.Uint64() % (uint64(pi.Params.M) * uint64(pi.Params.K))
+	queryIndex := rand.Uint64() % (uint64(pi.Params.M) * uint64(pi.Params.L))
 
 	fmt.Println("Generate Key...")
 	start := time.Now()
