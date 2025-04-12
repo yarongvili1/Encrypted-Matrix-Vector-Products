@@ -1,34 +1,41 @@
-package pir
+package splitlsnpir
 
 import (
+	"RandomLinearCodePIR/pir"
 	"fmt"
 	"math/rand"
 	"testing"
 	"time"
 )
 
-func TestBasePIR(t *testing.T) {
-	lambda := uint32(32)
-	row := uint32(1 << 8)
-	col := uint32(1 << 6)
+func TestFullFunctionOfSLSNPIR(t *testing.T) {
+	row := uint32(1 << 14)
+	k := uint32(1 << 14)
+	s := uint32(16)
+	l := uint32(16)
+	n := k + l
+	// Largest Prime in 32 bits
+	p := uint32(1<<32 - 5)
+	seed := int64(1)
 
-	pi := &BasePIR{
-		Params: BaseParams{
-			Rows:           row,
-			Cols:           col,
-			NumberOfBlocks: uint32(16),
-			CodewordLength: col + lambda,
-		},
-	}
+	pi := &SlsnPIR{Params: SlsnParams{
+		PrimeField: p,
+		NumBlocks:  s,
+		K:          k,
+		N:          n,
+		M:          row,
+		L:          l,
+	}}
 
-	matrix := GenerateMatrix(pi.Params.Rows, pi.Params.Cols, 1, 1)
-	queryIndex := uint64(rand.Intn(int(row) * int(col)))
+	matrix := pir.GeneratePrimeFieldMatrix(pi.Params.M, pi.Params.K, p, seed)
 
-	fmt.Printf("Running PIR with Database %d * %d \n", pi.Params.Rows, pi.Params.Cols)
+	fmt.Printf("Running PIR with Database %d * %d \n", pi.Params.M, pi.Params.K)
+
+	queryIndex := rand.Uint64() % (uint64(pi.Params.M) * uint64(pi.Params.K))
 
 	fmt.Println("Generate Key...")
 	start := time.Now()
-	sk := pi.KeyGen(1, 2, 32, 1)
+	sk := pi.KeyGen(seed)
 	fmt.Println("    Elapsed: ", time.Since(start))
 
 	fmt.Println("Encode Message...")
@@ -43,7 +50,7 @@ func TestBasePIR(t *testing.T) {
 
 	fmt.Println("Answer...")
 	start = time.Now()
-	serverResponse := pi.Answer(encodedMatrix, clientQuery)
+	serverResponse := pi.Answer(*encodedMatrix, clientQuery)
 	fmt.Println("    Elapsed: ", time.Since(start))
 
 	fmt.Println("Decode...")

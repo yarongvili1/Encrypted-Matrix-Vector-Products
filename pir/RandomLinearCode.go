@@ -4,6 +4,8 @@ import (
 	"math/rand"
 )
 
+// The functions in this file are hardcoded for F_2
+
 // Generate Sysmtematic Random Linear Code which has form G=(I_N | P) where P has dimension N * (M-N)
 // Random each column of P using seed = seed + col where col := range 1 to M-N
 func GenerateRandomLinearCode(N, M uint32, seed int64) {

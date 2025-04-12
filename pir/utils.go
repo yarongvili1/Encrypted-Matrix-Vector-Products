@@ -24,3 +24,40 @@ func RandomizeFlipVector(N uint32) []uint32 {
 	}
 	return vector
 }
+
+func RandomSplitLSNNoiseCoeff(s uint32, p uint32) []uint32 {
+	vector := make([]uint32, s)
+	for i := range vector {
+		vector[i] = uint32(rand.Intn(int(p)-1) + 1) // Generates non-zero values in F_p
+	}
+	return vector
+}
+
+func RandomPrimeFieldVector(n uint32, p uint32) []uint32 {
+	vector := make([]uint32, n)
+	for i := range vector {
+		vector[i] = uint32(rand.Intn(int(p))) // Generates non-zero values in F_p
+	}
+	return vector
+}
+
+func ModInverse(a, p uint32) uint32 {
+	var t, newT int64 = 0, 1
+	var r, newR int64 = int64(p), int64(a)
+
+	for newR != 0 {
+		quotient := r / newR
+		t, newT = newT, t-quotient*newT
+		r, newR = newR, r-quotient*newR
+	}
+
+	if r > 1 {
+		panic("a is not invertible")
+	}
+
+	if t < 0 {
+		t += int64(p)
+	}
+
+	return uint32(t)
+}

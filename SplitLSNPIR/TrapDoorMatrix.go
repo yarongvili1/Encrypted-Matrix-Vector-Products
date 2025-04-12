@@ -1,0 +1,5 @@
+package splitlsnpir
+
+func GenerateTrapDoorMatrix() {
+
+}

@@ -1,6 +1,7 @@
 package pir
 
 import (
+	"math"
 	"math/rand"
 )
 
@@ -44,6 +45,25 @@ func GenerateRandomMatrix(rows, cols uint32, seed int64) [][]uint32 {
 	}
 
 	return matrix
+}
+
+func GeneratePrimeFieldMatrix(rows, cols, p uint32, seed int64) Matrix {
+	rng := rand.New(rand.NewSource(seed))
+
+	dataSize := uint64(rows) * uint64(cols)
+
+	data := make([]uint32, dataSize)
+
+	for i := range data {
+		data[i] = uint32(rng.Intn(int(p)))
+	}
+
+	return Matrix{
+		Rows:      rows,
+		Cols:      cols,
+		EntryBits: uint32(math.Ceil(math.Log2(float64(p)))),
+		Data:      data,
+	}
 }
 
 func PackAndTransposeMatrix(matrix [][]uint32, rows, cols uint32) []uint32 {
