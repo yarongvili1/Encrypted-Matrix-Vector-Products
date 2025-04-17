@@ -74,8 +74,8 @@ func (slsn *SlsnMVP) Encode(sk SecretKey, input dataobjects.Matrix, mask []uint3
 	for i := uint32(0); i < input.Rows; i++ {
 		copy(encoded[i*params.N:i*params.N+params.L], input.Data[i*params.L:(i+1)*params.L])
 
-		BlockMatVecProduct(rlcMatrix, input.Data[i*input.Cols:(i+1)*input.Cols], encoded[i*params.N+params.L:(i+1)*params.N],
-			params.K, params.L, 1, params.P)
+		MatVecProduct(rlcMatrix, input.Data[i*input.Cols:(i+1)*input.Cols], encoded[i*params.N+params.L:(i+1)*params.N],
+			params.K, params.L, params.P)
 	}
 
 	// Add Masks
@@ -103,13 +103,7 @@ func (slsn *SlsnMVP) Query(sk SecretKey, vec []uint32) (*SlsnQuery, *SlsnAux) {
 
 	queryVector := make([]uint32, params.N)
 
-	BlockMatVecProduct(PofDual, nullspaceCoeff, queryVector, params.L, params.K, 1, params.P)
-
-	// C.BlockMatVecProduct(
-	// 	(*C.uint32_t)(unsafe.Pointer(&PofDual[0])),
-	// 	(*C.uint32_t)(unsafe.Pointer(&nullspaceCoeff[0])),
-	// 	(*C.uint32_t)(unsafe.Pointer(&queryVector[0])),
-	// 	C.uint32_t(params.L), C.uint32_t(params.K), C.uint32_t(1), C.uint32_t(params.PrimeField))
+	MatVecProduct(PofDual, nullspaceCoeff, queryVector, params.L, params.K, params.P)
 
 	copy(queryVector[params.L:params.N], nullspaceCoeff[:params.K])
 

@@ -35,6 +35,21 @@ void BlockMatVecProduct(const uint32_t* mat, const uint32_t* vec, uint32_t* resu
     }
 }
 
+// M x v
+void MatVecProduct(const uint32_t* mat, const uint32_t* vec, uint32_t* result, uint32_t n, uint32_t m, uint32_t p)
+{
+    for (int row = 0; row < n; ++row) {
+        const uint32_t* row_ptr = mat + row * m;
+
+        uint32_t acc = 0;
+        for (int col = 0; col < m; ++col) {
+            acc = mod_add(acc, mod_mul(row_ptr[col], vec[col], p), p);
+        }
+
+        result[row] = acc;
+    }
+}
+
 void BlockVecMatProduct(const uint32_t* mat, const uint32_t* vec, uint32_t* result, uint32_t n, uint32_t m, uint32_t s, uint32_t p)
 {
     int b = n / s;
