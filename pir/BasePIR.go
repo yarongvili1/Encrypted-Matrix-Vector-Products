@@ -5,6 +5,7 @@ package pir
 */
 import "C"
 import (
+	"RandomLinearCodePIR/utils"
 	"math/rand"
 	"unsafe"
 )
@@ -92,7 +93,7 @@ func (p *BasePIR) Query(sk SecretKey, queryIndex uint64) (*BasePIRQuery, *BasePI
 
 	vector_2 := make([]uint32, p.Params.CodewordLength)
 
-	flipVector := RandomizeFlipVector(p.Params.NumberOfBlocks)
+	flipVector := utils.RandomizeFlipVector(p.Params.NumberOfBlocks)
 
 	// TODO : Make sure it devides
 	blockSize := p.Params.CodewordLength / p.Params.NumberOfBlocks

@@ -1,6 +1,7 @@
 package pir
 
 import (
+	"RandomLinearCodePIR/utils"
 	"math/rand"
 )
 
@@ -68,7 +69,7 @@ func SystematicEncoding(M uint32, seed int64, matrix Matrix) [][]uint32 {
 // We sample a vector of length M-N in F2 to be the coefficients of the linear combination of the columns
 // We can do XOR of the columns while we know the column i is composed by the ith column of P and the ith unit vector
 func SampleVectorFromNullSpace(N, M uint32, seed int64) []uint32 {
-	coeff := RandomizeBinaryVector(M - N)
+	coeff := utils.RandomizeBinaryVector(M - N)
 	res := make([]uint32, M)
 
 	for i := uint32(0); i < M-N; i++ {

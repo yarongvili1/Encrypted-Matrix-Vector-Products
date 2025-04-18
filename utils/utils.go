@@ -54,6 +54,23 @@ func RandomNoiseVector(n uint32, epsi float32, p uint32) []uint32 {
 	return vector
 }
 
+func RandomLPNNoiseVector(n uint32, epsi float32, field dataobjects.Field) []uint32 {
+	vector := make([]uint32, n)
+	for i := range vector {
+		if rand.Float32() <= epsi {
+			var val uint32
+			for {
+				val = field.SampleElement()
+				if val != 0 {
+					break
+				}
+			}
+			vector[i] = val
+		}
+	}
+	return vector
+}
+
 func IsZeroVector(v []uint32) bool {
 	for _, val := range v {
 		if val != 0 {
@@ -110,16 +127,4 @@ func RoundUp(x, b uint32) uint32 {
 		return x
 	}
 	return ((x / b) + 1) * b
-}
-
-func Negate(x, p uint32) uint32 {
-	return (p - x) % p
-}
-
-func PrimeAdd(a, b, p uint32) uint32 {
-	return uint32((uint64(a) + uint64(b)) % uint64(p))
-}
-
-func PrimeSub(a, b, p uint32) uint32 {
-	return uint32((uint64(a) + uint64(p) - uint64(b)) % uint64(p))
 }

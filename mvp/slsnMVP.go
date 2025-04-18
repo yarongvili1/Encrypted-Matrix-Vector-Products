@@ -4,7 +4,6 @@ import (
 	"RandomLinearCodePIR/dataobjects"
 	"RandomLinearCodePIR/linearcode"
 	"RandomLinearCodePIR/tdm"
-	"RandomLinearCodePIR/utils"
 )
 
 type SlsnMVP struct {
@@ -150,7 +149,7 @@ func (slsn *SlsnMVP) Decode(sk SecretKey, response []uint32, aux SlsnAux) []uint
 	BlockVecMatProduct(response, vec, result, params.S, params.M, 1, params.P)
 	// Unmask
 	for i := uint32(0); i < params.M; i++ {
-		result[i] = utils.PrimeSub(result[i], aux.Masks[i], params.P)
+		result[i] = params.Field.Sub(result[i], aux.Masks[i])
 	}
 
 	return result
