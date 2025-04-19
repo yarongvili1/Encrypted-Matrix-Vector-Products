@@ -29,7 +29,8 @@ type TDM struct {
 
 func (td *TDM) GenerateTrapDooredMatrix() [][]uint32 {
 	td.updateInternalUseParams()
-	Q_R := GetQuasiCyclicMatrix(td.permD, td.n, td.Q, td.blockSize, td.SeedR)
+	Q_R := GetQuasiCyclicMatrix(td.permD, td.n, td.blockSize, td.Q, td.SeedR)
+
 	perm := GetPermutation(td.permD, td.SeedP)
 	PermuteRowsInPlace(Q_R, perm)
 
@@ -213,12 +214,13 @@ func (td *TDM) updateInternalUseParams() {
 	td.permD = max(td.m, td.n)
 }
 
-// Currently hardcode it to be min(2^(ceil(log2(m))), q-1)
+// Currently hardcode it to be min(2^(ceil(log2(min(m,n)))), q-1)
 // TODO: update for m,n,q in general
 func (td *TDM) determineBlockSize() uint32 {
-	if td.M >= td.Q-1 {
-		return td.Q
+	minOfMN := min(td.M, td.N)
+	if minOfMN >= (td.Q-1)/2 {
+		return (td.Q - 1) / 2
 	}
 
-	return uint32(1) << uint32(math.Ceil(math.Log2(float64(td.M))))
+	return uint32(1) << uint32(math.Ceil(math.Log2(float64(minOfMN))))
 }
