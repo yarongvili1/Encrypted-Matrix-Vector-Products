@@ -66,20 +66,15 @@ func TestFullFunctionOfSLSNPIR(t *testing.T) {
 	val := pi.Decode(sk, serverResponse, *aux)
 	fmt.Println("    Elapsed: ", time.Since(start))
 
-	// fmt.Println(val)
-
 	target := make([]uint32, m)
 	BlockMatVecProduct(matrix.Data, query, target, m, l, 1, p)
 
-	if len(val) != len(target) {
-		panic("Naive Sanity Check!")
+	for i := range target {
+		if target[i] != val[i] {
+			panic("Vec doesn't match ! ")
+		}
 	}
 
-	// for i := range target {
-	// 	if target[i] != val[i] {
-	// 		panic("Vec doesn't match ! ")
-	// 	}
-	// }
 }
 
 func TestLPNMVPComplete(t *testing.T) {
@@ -143,13 +138,9 @@ func TestLPNMVPComplete(t *testing.T) {
 	target := make([]uint32, m)
 	MatVecProduct(matrix.Data, query, target, m, l, p)
 
-	if len(val) != len(target) {
-		panic("Naive Sanity Check!")
+	for i := range target {
+		if target[i] != val[i] {
+			panic("Vec doesn't match ! ")
+		}
 	}
-
-	// for i := range target {
-	// 	if target[i] != val[i] {
-	// 		panic("Vec doesn't match ! ")
-	// 	}
-	// }
 }

@@ -27,11 +27,11 @@ type TDM struct {
 	permD     uint32
 }
 
-func (td *TDM) GenerateTrapDooredMatrix() [][]uint32 {
+func (td *TDM) GenerateTrapDooredMatrix(seedL, seedP, seedR int64) [][]uint32 {
 	td.updateInternalUseParams()
-	Q_R := GetQuasiCyclicMatrix(td.permD, td.n, td.blockSize, td.Q, td.SeedR)
+	Q_R := GetQuasiCyclicMatrix(td.permD, td.n, td.blockSize, td.Q, seedR)
 
-	perm := GetPermutation(td.permD, td.SeedP)
+	perm := GetPermutation(td.permD, seedP)
 	PermuteRowsInPlace(Q_R, perm)
 
 	// R = Q_L x perm(Q_R)
@@ -45,7 +45,7 @@ func (td *TDM) GenerateTrapDooredMatrix() [][]uint32 {
 		for i := range Q_R {
 			v[i] = Q_R[i][j]
 		}
-		res := QuasiCyclicVectorMul(td.m, td.permD, td.blockSize, td.Q, td.SeedL, v)
+		res := QuasiCyclicVectorMul(td.m, td.permD, td.blockSize, td.Q, seedL, v)
 		for i := range res {
 			R[i][j] = res[i]
 		}
@@ -56,7 +56,18 @@ func (td *TDM) GenerateTrapDooredMatrix() [][]uint32 {
 
 func (td *TDM) GenerateFlattenedTrapDooredMatrix() []uint32 {
 	result := make([]uint32, td.M*td.N)
-	R := td.GenerateTrapDooredMatrix()
+	R := td.GenerateTrapDooredMatrix(td.SeedL, td.SeedP, td.SeedR)
+
+	// Only return the upper-left cornor of the TDM
+	for i := uint32(0); i < td.M; i++ {
+		copy(result[i*td.N:(i+1)*td.N], R[i])
+	}
+	return result
+}
+
+func (td *TDM) GenerateFlattenedTrapDooredMatrixPerSlice(sliceNum int64) []uint32 {
+	result := make([]uint32, td.M*td.N)
+	R := td.GenerateTrapDooredMatrix(td.SeedL+sliceNum, td.SeedP+sliceNum, td.SeedR+sliceNum)
 
 	// Only return the upper-left cornor of the TDM
 	for i := uint32(0); i < td.M; i++ {
@@ -77,6 +88,23 @@ func (td *TDM) EvaluationCircuit(v []uint32) []uint32 {
 	perm := GetPermutation(td.permD, td.SeedP)
 	PermuteVectorInPlace(vec, perm)
 	masks := QuasiCyclicVectorMul(td.m, td.permD, td.blockSize, td.Q, td.SeedL, vec)
+
+	// Trim the padded rows of TDM
+	return masks[0:td.M]
+}
+
+func (td *TDM) EvaluationCircuitPerSlice(v []uint32, i int64) []uint32 {
+	// Pad with 0's if TDM has more columns
+	if int(td.n) > len(v) {
+		padded := make([]uint32, td.n)
+		copy(padded, v)
+		v = padded
+	}
+
+	vec := QuasiCyclicVectorMul(td.permD, td.n, td.blockSize, td.Q, td.SeedR+i, v)
+	perm := GetPermutation(td.permD, td.SeedP+i)
+	PermuteVectorInPlace(vec, perm)
+	masks := QuasiCyclicVectorMul(td.m, td.permD, td.blockSize, td.Q, td.SeedL+i, vec)
 
 	// Trim the padded rows of TDM
 	return masks[0:td.M]

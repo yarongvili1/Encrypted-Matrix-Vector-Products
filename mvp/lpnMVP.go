@@ -33,6 +33,7 @@ type LpnQuery struct {
 
 type LpnAux struct {
 	NoisyQueryIndicator []bool
+	Masks               []uint32
 }
 
 type LpnResponse struct {
@@ -46,7 +47,8 @@ func (lpn *LpnMVP) KeyGen(seed int64) SecretKey {
 		LinearCodeKey:   seed,
 		PreLoadedMatrix: linearcode.Generate1DDualMatrix(params.L, params.K, params.Field, seed),
 		TDM: &tdm.TDM{
-			M: params.M,
+			// Trapdoored matrix would be applied Each Slice with params.M / params.M_1 rows
+			M: params.M / params.M_1,
 			N: params.N,
 			// NOTE: Now TDM only support Q = 2^x + 1, Change this to Field later
 			Q:     params.P,
@@ -60,7 +62,7 @@ func (lpn *LpnMVP) KeyGen(seed int64) SecretKey {
 func (lpn *LpnMVP) GenerateTDM(sk SecretKey) [][]uint32 {
 	masks := make([][]uint32, lpn.Params.ECCLength)
 	for i := range masks {
-		masks[i] = sk.TDM.GenerateFlattenedTrapDooredMatrix()
+		masks[i] = sk.TDM.GenerateFlattenedTrapDooredMatrixPerSlice(int64(i))
 	}
 	return masks
 }
@@ -118,6 +120,7 @@ func (lpn *LpnMVP) Encode(sk SecretKey, input dataobjects.Matrix, masks [][]uint
 	// Add Masks
 	for i := uint64(0); i < uint64(params.ECCLength); i++ {
 		start := i * uint64(entryPerSlice)
+
 		for j := uint64(0); j < uint64(entryPerSlice); j++ {
 			encoded[start+j] = params.Field.Add(encoded[start+j], masks[i][j])
 		}
@@ -140,12 +143,12 @@ func (lpn *LpnMVP) Query(sk SecretKey, vec []uint32) (*LpnQuery, *LpnAux) {
 
 	// ECCLength Slice, each with length N
 	queryVector := make([]uint32, params.N*params.ECCLength)
+	masks := make([]uint32, params.M*params.ECCLength/params.M_1)
 
 	noisyQueryIndicator := make([]bool, params.ECCLength)
 
 	for t := uint32(0); t < params.ECCLength; t++ {
 		r := params.Field.SampleVector(params.K)
-
 		// e \in Ber(epsi)^L
 		e := utils.RandomLPNNoiseVector(params.L, params.Epsi, params.Field)
 
@@ -160,10 +163,12 @@ func (lpn *LpnMVP) Query(sk SecretKey, vec []uint32) (*LpnQuery, *LpnAux) {
 
 		copy(queryVector[t*params.N+params.L:t*params.N+params.N], r[:params.K])
 
-		// Check !!!!!
 		for i := uint64(0); i < uint64(params.L); i++ {
 			queryVector[uint64(t*params.N)+i] = params.Field.Add(queryVector[uint64(t*params.N)+i], vec[i])
 		}
+		mask := sk.TDM.EvaluationCircuitPerSlice(queryVector[t*params.N:(t+1)*params.N], int64(t))
+
+		copy(masks[t*params.M/params.M_1:], mask)
 	}
 
 	return &LpnQuery{
@@ -172,6 +177,7 @@ func (lpn *LpnMVP) Query(sk SecretKey, vec []uint32) (*LpnQuery, *LpnAux) {
 			NumOfQueries: params.ECCLength,
 		}, &LpnAux{
 			NoisyQueryIndicator: noisyQueryIndicator,
+			Masks:               masks,
 		}
 }
 
@@ -198,6 +204,11 @@ func (lpn *LpnMVP) Answer(encodedMatrix *dataobjects.Matrix, clientQuery *LpnQue
 
 func (lpn *LpnMVP) Decode(sk SecretKey, response *LpnResponse, aux *LpnAux) []uint32 {
 	params := lpn.Params
+
+	// Unmask
+	for i := range response.Answers {
+		response.Answers[i] = params.Field.Sub(response.Answers[i], aux.Masks[i])
+	}
 
 	result := make([]uint32, params.M)
 
