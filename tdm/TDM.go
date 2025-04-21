@@ -10,7 +10,6 @@ import (
 	"RandomLinearCodePIR/utils"
 	"math"
 	"math/rand"
-	"unsafe"
 )
 
 type TDM struct {
@@ -111,7 +110,7 @@ func (td *TDM) EvaluationCircuitPerSlice(v []uint32, i int64) []uint32 {
 }
 
 func QuasiCyclicVectorMul(row, col, blockSize, q uint32, seed int64, v []uint32) []uint32 {
-	root := uint32(C.NthRootOfUnity(C.uint32_t(q), C.uint32_t(blockSize)))
+	root := NthRootOfUnity(q, blockSize)
 
 	result := make([]uint32, row)
 	tmp_result := make([]uint32, blockSize)
@@ -135,13 +134,6 @@ func QuasiCyclicVectorMul(row, col, blockSize, q uint32, seed int64, v []uint32)
 	}
 
 	return result
-}
-
-func NTT_Convolution(dataA, dataB, result []uint32, degree, root, q uint32) {
-	C.ntt_convolution((*C.uint32_t)(unsafe.Pointer(&dataA[0])),
-		(*C.uint32_t)(unsafe.Pointer(&dataB[0])),
-		(*C.uint32_t)(unsafe.Pointer(&result[0])),
-		C.size_t(degree), C.uint32_t(root), C.uint32_t(q))
 }
 
 func PermuteRowsInPlace(matrix [][]uint32, perm []uint32) {

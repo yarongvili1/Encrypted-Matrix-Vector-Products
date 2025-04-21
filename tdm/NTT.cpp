@@ -136,3 +136,14 @@ void ntt_convolution(const u32* a, const u32* b, u32* result, size_t n, u32 root
     delete[] fa;
     delete[] fb;
 }
+
+void poly_mod_xt_minus_1(const u32* a, u32* b, size_t n, size_t t, u32 mod) {
+    // Initialize output buffer
+    for (size_t i = 0; i < t; ++i) b[i] = 0;
+
+    // Perform modulo reduction
+    for (size_t i = 0; i < n; ++i) {
+        size_t j = i % t;
+        b[j] = (b[j] + a[i]) % mod;
+    }
+}
