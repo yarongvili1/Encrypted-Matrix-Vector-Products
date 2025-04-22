@@ -9,6 +9,7 @@ type Field interface {
 	Neg(a uint32) uint32
 	Inv(a uint32) uint32
 	Mod() uint32
+	GetChar() uint32
 	SampleElementWithSeed(rng *rand.Rand) uint32
 	SampleElement() uint32
 	SampleInvertibleVec(n uint32) []uint32
@@ -62,6 +63,10 @@ func (f *PrimeField) Inv(a uint32) uint32 {
 }
 
 func (f *PrimeField) Mod() uint32 {
+	return f.p
+}
+
+func (f *PrimeField) GetChar() uint32 {
 	return f.p
 }
 

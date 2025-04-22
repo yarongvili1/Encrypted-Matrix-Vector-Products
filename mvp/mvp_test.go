@@ -3,17 +3,18 @@ package mvp
 import (
 	"RandomLinearCodePIR/dataobjects"
 	"RandomLinearCodePIR/ecc"
+	"RandomLinearCodePIR/linearcode"
 	"RandomLinearCodePIR/utils"
 	"fmt"
 	"testing"
 	"time"
 )
 
-func TestFullFunctionOfSLSNPIR(t *testing.T) {
-	m := uint32(1 << 8)
-	l := uint32(1 << 8)
+func TestSlsnMVPComplete(t *testing.T) {
+	m := uint32(1 << 10)
+	l := uint32(1 << 10)
+	k := uint32(1 << 4)
 	s := uint32(2)
-	k := uint32(4)
 	n := k + l
 	b := n / s
 	p := uint32(65537)
@@ -32,7 +33,7 @@ func TestFullFunctionOfSLSNPIR(t *testing.T) {
 
 	matrix := utils.GeneratePrimeFieldMatrix(pi.Params.M, pi.Params.L, p, seed)
 
-	fmt.Printf("Running PIR with Database %d * %d \n", pi.Params.M, pi.Params.L)
+	fmt.Printf("Running MVP with Database %d * %d \n", pi.Params.M, pi.Params.L)
 
 	query := utils.RandomPrimeFieldVector(pi.Params.L, pi.Params.P)
 
@@ -55,6 +56,7 @@ func TestFullFunctionOfSLSNPIR(t *testing.T) {
 	start = time.Now()
 	clientQuery, aux := pi.Query(sk, query)
 	fmt.Println("    Elapsed: ", time.Since(start))
+	fmt.Println("    Include Calculate Mask Time: ", aux.Dur)
 
 	fmt.Println("Answer...")
 	start = time.Now()
@@ -101,7 +103,7 @@ func TestLPNMVPComplete(t *testing.T) {
 
 	matrix := utils.GeneratePrimeFieldMatrix(pi.Params.M, pi.Params.L, p, seed)
 
-	fmt.Printf("Running PIR with Database %d * %d \n", pi.Params.M, pi.Params.L)
+	fmt.Printf("Running MVP with Database %d * %d \n", pi.Params.M, pi.Params.L)
 
 	query := utils.RandomPrimeFieldVector(pi.Params.L, pi.Params.P)
 
@@ -137,6 +139,87 @@ func TestLPNMVPComplete(t *testing.T) {
 
 	target := make([]uint32, m)
 	MatVecProduct(matrix.Data, query, target, m, l, p)
+
+	for i := range target {
+		if target[i] != val[i] {
+			panic("Vec doesn't match ! ")
+		}
+	}
+}
+
+func TestRingSlsnMVPComplete(t *testing.T) {
+	m := uint32(1 << 10)
+	l := uint32(1 << 10)
+	k := uint32(1 << 4)
+	s := uint32(2)
+	n := k + l
+	b := n / s
+	p := uint32(65537)
+	seed := int64(1)
+
+	pi := &SlsnMVP{Params: SlsnParams{
+		Field: dataobjects.NewPrimeField(p),
+		S:     s,
+		K:     k,
+		N:     n,
+		M:     m,
+		L:     l,
+		B:     b,
+		P:     p,
+	}}
+
+	code := linearcode.GetLinearCode(
+		linearcode.LinearCodeConfig{
+			Name:  linearcode.Vandermonde,
+			K:     k,
+			L:     l,
+			Field: dataobjects.NewPrimeField(p),
+		},
+	)
+
+	ring := &RingSlsnMVP{
+		SlsnMVP:           *pi,
+		LinearCodeEncoder: code,
+	}
+
+	matrix := utils.GeneratePrimeFieldMatrix(pi.Params.M, pi.Params.L, p, seed)
+	query := utils.RandomPrimeFieldVector(pi.Params.L, pi.Params.P)
+
+	target := make([]uint32, m)
+	MatVecProduct(matrix.Data, query, target, m, l, p)
+
+	fmt.Printf("Running MVP with Database %d * %d \n", pi.Params.M, pi.Params.L)
+
+	fmt.Println("Generate Key...")
+	start := time.Now()
+	sk := ring.KeyGen(seed)
+	fmt.Println("    Elapsed: ", time.Since(start))
+
+	fmt.Println("Generate Trapdoored Matrix...")
+	start = time.Now()
+	TDM := ring.GenerateTDM(sk)
+	fmt.Println("    Elapsed: ", time.Since(start))
+
+	fmt.Println("Encode Message...")
+	start = time.Now()
+	encodedMatrix := ring.Encode(sk, matrix, TDM)
+	fmt.Println("    Elapsed: ", time.Since(start))
+
+	fmt.Println("Generate Query...")
+	start = time.Now()
+	clientQuery, aux := ring.Query(sk, query)
+	fmt.Println("    Elapsed: ", time.Since(start))
+	fmt.Println("    Include Calculate Mask Time: ", aux.Dur)
+
+	fmt.Println("Answer...")
+	start = time.Now()
+	serverResponse := ring.Answer(*encodedMatrix, *clientQuery)
+	fmt.Println("    Elapsed: ", time.Since(start))
+
+	fmt.Println("Decode...")
+	start = time.Now()
+	val := ring.Decode(sk, serverResponse, *aux)
+	fmt.Println("    Elapsed: ", time.Since(start))
 
 	for i := range target {
 		if target[i] != val[i] {

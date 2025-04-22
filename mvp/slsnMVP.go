@@ -4,6 +4,7 @@ import (
 	"RandomLinearCodePIR/dataobjects"
 	"RandomLinearCodePIR/linearcode"
 	"RandomLinearCodePIR/tdm"
+	"time"
 )
 
 type SlsnMVP struct {
@@ -42,6 +43,7 @@ type SlsnQuery struct {
 type SlsnAux struct {
 	Coeff []uint32
 	Masks []uint32
+	Dur   time.Duration
 }
 
 func (slsn *SlsnMVP) KeyGen(seed int64) SecretKey {
@@ -111,8 +113,11 @@ func (slsn *SlsnMVP) Query(sk SecretKey, vec []uint32) (*SlsnQuery, *SlsnAux) {
 		queryVector[i] = params.Field.Add(queryVector[i], vec[i])
 	}
 
+	// The time is just for benchmark
+	start := time.Now()
 	// Calculate The Mask
 	masks := sk.TDM.EvaluationCircuit(queryVector)
+	dur := time.Since(start)
 
 	// Generate Non-zero coefficient
 	coeff := params.Field.SampleInvertibleVec(params.S)
@@ -128,6 +133,7 @@ func (slsn *SlsnMVP) Query(sk SecretKey, vec []uint32) (*SlsnQuery, *SlsnAux) {
 		}, &SlsnAux{
 			Coeff: coeff,
 			Masks: masks,
+			Dur:   dur,
 		}
 }
 
