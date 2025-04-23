@@ -227,3 +227,176 @@ func TestRingSlsnMVPComplete(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkCleartextServerExecution(b *testing.B) {
+	m := uint32(1) << 10
+	l := uint32(1) << 10
+	p := uint32(65537)
+	seed := int64(1)
+	matrix := utils.GeneratePrimeFieldMatrix(m, l, p, seed)
+	result := make([]uint32, m)
+
+	var totalDuration time.Duration
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		query := utils.RandomPrimeFieldVector(l, p)
+		start := time.Now()
+		MatVecProduct(matrix.Data, query, result, m, l, p)
+		duration := time.Since(start)
+		totalDuration += duration
+	}
+
+	b.StopTimer()
+	fmt.Printf("Average server execution time for m = %d, l = %d : %v\n", m, l, totalDuration/time.Duration(b.N))
+}
+
+func BenchmarkRingSLSNQuery(b *testing.B) {
+	m := uint32(1 << 10)
+	l := uint32(1 << 10)
+	k := uint32(1 << 4)
+	s := uint32(2)
+	n := k + l
+	block := n / s
+	p := uint32(65537)
+	seed := int64(1)
+
+	pi := &SlsnMVP{Params: SlsnParams{
+		Field: dataobjects.NewPrimeField(p),
+		S:     s,
+		K:     k,
+		N:     n,
+		M:     m,
+		L:     l,
+		B:     block,
+		P:     p,
+	}}
+
+	code := linearcode.GetLinearCode(
+		linearcode.LinearCodeConfig{
+			Name:  linearcode.Vandermonde,
+			K:     k,
+			L:     l,
+			Field: dataobjects.NewPrimeField(p),
+		},
+	)
+
+	ring := &RingSlsnMVP{
+		SlsnMVP:           *pi,
+		LinearCodeEncoder: code,
+	}
+
+	sk := ring.KeyGen(seed)
+	ring.GenerateTDM(sk)
+
+	var totalDuration time.Duration
+	var unmaskDuration time.Duration
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		query := utils.RandomPrimeFieldVector(pi.Params.L, pi.Params.P)
+		start := time.Now()
+		_, aux := ring.Query(sk, query)
+		duration := time.Since(start)
+		totalDuration += duration
+		unmaskDuration += aux.Dur
+	}
+
+	b.StopTimer()
+
+	fmt.Printf("Ring SLSN For m = %d, l = %d, k = %d \n", m, l, k)
+	fmt.Printf("Average Query time: %v\n", totalDuration/time.Duration(b.N))
+	fmt.Printf("Average Calculate Mask time: %v\n", unmaskDuration/time.Duration(b.N))
+}
+
+func BenchmarkSLSNQuery(b *testing.B) {
+	m := uint32(1 << 10)
+	l := uint32(1 << 10)
+	k := uint32(1 << 4)
+	s := uint32(2)
+	n := k + l
+	block := n / s
+	p := uint32(65537)
+	seed := int64(1)
+
+	pi := &SlsnMVP{Params: SlsnParams{
+		Field: dataobjects.NewPrimeField(p),
+		S:     s,
+		K:     k,
+		N:     n,
+		M:     m,
+		L:     l,
+		B:     block,
+		P:     p,
+	}}
+
+	sk := pi.KeyGen(seed)
+	pi.GenerateTDM(sk)
+
+	var totalDuration time.Duration
+	var unmaskDuration time.Duration
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		query := utils.RandomPrimeFieldVector(pi.Params.L, pi.Params.P)
+		start := time.Now()
+		_, aux := pi.Query(sk, query)
+		duration := time.Since(start)
+		totalDuration += duration
+		unmaskDuration += aux.Dur
+	}
+
+	b.StopTimer()
+
+	fmt.Printf("SLSN For m = %d, l = %d, k = %d \n", m, l, k)
+	fmt.Printf("Average Query time: %v\n", totalDuration/time.Duration(b.N))
+	fmt.Printf("Average Calculate Mask time: %v\n", unmaskDuration/time.Duration(b.N))
+}
+
+func BenchmarkSLSNAnswer(b *testing.B) {
+	m := uint32(1 << 10)
+	l := uint32(1 << 10)
+	k := uint32(1 << 4)
+	s := uint32(2)
+	n := k + l
+	block := n / s
+	p := uint32(65537)
+	seed := int64(1)
+
+	pi := &SlsnMVP{Params: SlsnParams{
+		Field: dataobjects.NewPrimeField(p),
+		S:     s,
+		K:     k,
+		N:     n,
+		M:     m,
+		L:     l,
+		B:     block,
+		P:     p,
+	}}
+
+	matrix := utils.GeneratePrimeFieldMatrix(pi.Params.M, pi.Params.L, p, seed)
+
+	sk := pi.KeyGen(seed)
+	TDM := pi.GenerateTDM(sk)
+	encodedMatrix := pi.Encode(sk, matrix, TDM)
+
+	var totalDuration time.Duration
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		query := utils.RandomPrimeFieldVector(pi.Params.L, pi.Params.P)
+		clientQuery, _ := pi.Query(sk, query)
+
+		start := time.Now()
+		pi.Answer(*encodedMatrix, *clientQuery)
+		totalDuration += time.Since(start)
+	}
+
+	b.StopTimer()
+
+	fmt.Printf("Benchmark of SLSN Answer For m = %d, l = %d, k = %d \n", m, l, k)
+	fmt.Printf("Average Answer time: %v\n", totalDuration/time.Duration(b.N))
+}
