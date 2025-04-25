@@ -20,15 +20,18 @@ type TDM struct {
 	SeedP int64
 	SeedR int64
 	// Internal Use
-	m         uint32
-	n         uint32
-	blockSize uint32
-	permD     uint32
+	m      uint32
+	n      uint32
+	rootL  uint32
+	rootR  uint32
+	blockL uint32
+	blockR uint32
+	permD  uint32
 }
 
 func (td *TDM) GenerateTrapDooredMatrix(seedL, seedP, seedR int64) [][]uint32 {
 	td.updateInternalUseParams()
-	Q_R := GetQuasiCyclicMatrix(td.permD, td.n, td.blockSize, td.Q, seedR)
+	Q_R := GetQuasiCyclicMatrix(td.permD, td.n, td.blockR, td.Q, seedR)
 
 	perm := GetPermutation(td.permD, seedP)
 	PermuteRowsInPlace(Q_R, perm)
@@ -44,7 +47,7 @@ func (td *TDM) GenerateTrapDooredMatrix(seedL, seedP, seedR int64) [][]uint32 {
 		for i := range Q_R {
 			v[i] = Q_R[i][j]
 		}
-		res := QuasiCyclicVectorMul(td.m, td.permD, td.blockSize, td.Q, seedL, v)
+		res := QuasiCyclicVectorMul(td.m, td.permD, td.blockL, td.Q, td.rootL, seedL, v)
 		for i := range res {
 			R[i][j] = res[i]
 		}
@@ -76,19 +79,21 @@ func (td *TDM) GenerateFlattenedTrapDooredMatrixPerSlice(sliceNum int64) []uint3
 }
 
 func (td *TDM) EvaluationCircuit(v []uint32) []uint32 {
-	// Pad with 0's if TDM has more columns
+	if td.m == 0 {
+		td.updateInternalUseParams()
+	}
+
 	if int(td.n) > len(v) {
 		padded := make([]uint32, td.n)
 		copy(padded, v)
 		v = padded
 	}
 
-	vec := QuasiCyclicVectorMul(td.permD, td.n, td.blockSize, td.Q, td.SeedR, v)
+	vec := QuasiCyclicVectorMul(td.permD, td.n, td.blockR, td.Q, td.rootR, td.SeedR, v)
 	perm := GetPermutation(td.permD, td.SeedP)
 	PermuteVectorInPlace(vec, perm)
-	masks := QuasiCyclicVectorMul(td.m, td.permD, td.blockSize, td.Q, td.SeedL, vec)
+	masks := QuasiCyclicVectorMul(td.m, td.permD, td.blockL, td.Q, td.rootL, td.SeedL, vec)
 
-	// Trim the padded rows of TDM
 	return masks[0:td.M]
 }
 
@@ -100,18 +105,16 @@ func (td *TDM) EvaluationCircuitPerSlice(v []uint32, i int64) []uint32 {
 		v = padded
 	}
 
-	vec := QuasiCyclicVectorMul(td.permD, td.n, td.blockSize, td.Q, td.SeedR+i, v)
+	vec := QuasiCyclicVectorMul(td.permD, td.n, td.blockR, td.Q, td.rootR, td.SeedR+i, v)
 	perm := GetPermutation(td.permD, td.SeedP+i)
 	PermuteVectorInPlace(vec, perm)
-	masks := QuasiCyclicVectorMul(td.m, td.permD, td.blockSize, td.Q, td.SeedL+i, vec)
+	masks := QuasiCyclicVectorMul(td.m, td.permD, td.blockL, td.Q, td.rootL, td.SeedL+i, vec)
 
 	// Trim the padded rows of TDM
 	return masks[0:td.M]
 }
 
-func QuasiCyclicVectorMul(row, col, blockSize, q uint32, seed int64, v []uint32) []uint32 {
-	root := NthRootOfUnity(q, blockSize)
-
+func QuasiCyclicVectorMul(row, col, blockSize, q, root uint32, seed int64, v []uint32) []uint32 {
 	result := make([]uint32, row)
 	tmp_result := make([]uint32, blockSize)
 
@@ -228,16 +231,25 @@ func GetQuasiCyclicMatrix(row, col, blockSize, q uint32, seed int64) [][]uint32 
 }
 
 func (td *TDM) updateInternalUseParams() {
-	td.blockSize = td.determineBlockSize()
-	td.m = utils.RoundUp(td.M, td.blockSize)
-	td.n = utils.RoundUp(td.N, td.blockSize)
-	td.permD = max(td.m, td.n)
+	td.permD = max(roundUpToPowerOf2(td.M), roundUpToPowerOf2(td.N))
+
+	td.blockL = td.determineBlockSize(td.M, td.permD)
+	td.blockR = td.determineBlockSize(td.N, td.permD)
+
+	td.m = utils.RoundUp(td.M, td.blockL)
+	td.n = utils.RoundUp(td.N, td.blockR)
+	td.rootL = NthRootOfUnity(td.Q, td.blockL)
+	td.rootR = NthRootOfUnity(td.Q, td.blockR)
 }
 
-// Currently hardcode it to be min(2^(ceil(log2(min(m,n)))), q-1)
+func roundUpToPowerOf2(m uint32) uint32 {
+	return uint32(1) << uint32(math.Ceil(math.Log2(float64(m))))
+}
+
+// Currently hardcode it to be max(2^(ceil(log2(min(m,n)))), (q-1)/2) for m x n matrix
 // TODO: update for m,n,q in general
-func (td *TDM) determineBlockSize() uint32 {
-	minOfMN := min(td.M, td.N)
+func (td *TDM) determineBlockSize(m, n uint32) uint32 {
+	minOfMN := min(m, n)
 	if minOfMN >= (td.Q-1)/2 {
 		return (td.Q - 1) / 2
 	}
