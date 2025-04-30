@@ -287,7 +287,6 @@ func BenchmarkRingSLSNQuery(b *testing.B) {
 	}
 
 	sk := ring.KeyGen(seed)
-	ring.GenerateTDM(sk)
 
 	var totalDuration time.Duration
 	var unmaskDuration time.Duration
@@ -332,7 +331,6 @@ func BenchmarkSLSNQuery(b *testing.B) {
 	}}
 
 	sk := pi.KeyGen(seed)
-	pi.GenerateTDM(sk)
 
 	var totalDuration time.Duration
 	var unmaskDuration time.Duration
@@ -376,22 +374,59 @@ func BenchmarkSLSNAnswer(b *testing.B) {
 		P:     p,
 	}}
 
-	matrix := utils.GeneratePrimeFieldMatrix(pi.Params.M, pi.Params.L, p, seed)
-
-	sk := pi.KeyGen(seed)
-	TDM := pi.GenerateTDM(sk)
-	encodedMatrix := pi.Encode(sk, matrix, TDM)
+	encodedMatrix := utils.GeneratePrimeFieldMatrix(pi.Params.M, pi.Params.N, p, seed)
 
 	var totalDuration time.Duration
 
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		query := utils.RandomPrimeFieldVector(pi.Params.L, pi.Params.P)
-		clientQuery, _ := pi.Query(sk, query)
+		clientQuery := utils.RandomPrimeFieldVector(pi.Params.N, pi.Params.P)
 
 		start := time.Now()
-		pi.Answer(*encodedMatrix, *clientQuery)
+		pi.Answer(encodedMatrix, SlsnQuery{Vec: clientQuery})
+		totalDuration += time.Since(start)
+	}
+
+	b.StopTimer()
+
+	fmt.Printf("Benchmark of SLSN Answer For m = %d, l = %d, k = %d \n", m, l, k)
+	fmt.Printf("Average Answer time: %v\n", totalDuration/time.Duration(b.N))
+}
+
+func BenchmarkSLSNDecode(b *testing.B) {
+	m := uint32(1 << 10)
+	l := uint32(1 << 10)
+	k := uint32(1 << 4)
+	s := uint32(2)
+	n := k + l
+	block := n / s
+	p := uint32(65537)
+	seed := int64(1)
+
+	pi := &SlsnMVP{Params: SlsnParams{
+		Field: dataobjects.NewPrimeField(p),
+		S:     s,
+		K:     k,
+		N:     n,
+		M:     m,
+		L:     l,
+		B:     block,
+		P:     p,
+	}}
+
+	sk := pi.KeyGen(seed)
+	var totalDuration time.Duration
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		response := utils.RandomPrimeFieldVector(pi.Params.M*pi.Params.S, pi.Params.P)
+		coeff := utils.RandomSplitLSNNoiseCoeff(pi.Params.S, pi.Params.P)
+		mask := utils.RandomPrimeFieldVector(pi.Params.M, pi.Params.P)
+
+		start := time.Now()
+		pi.Decode(sk, response, SlsnAux{Coeff: coeff, Masks: mask})
 		totalDuration += time.Since(start)
 	}
 
