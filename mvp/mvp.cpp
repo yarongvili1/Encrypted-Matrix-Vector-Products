@@ -1,14 +1,5 @@
 #include <iostream>
 
-inline uint32_t mod_add(uint32_t a, uint32_t b, uint32_t p) {
-    uint64_t sum = (uint64_t)a + b;
-    return (sum >= p) ? sum - p : (uint32_t)sum;
-}
-
-inline uint32_t mod_mul(uint32_t a, uint32_t b, uint32_t p) {
-    return (uint32_t)(((uint64_t)a * b) % p);
-}
-
 extern "C" {
 
 void BlockMatVecProduct(const uint32_t* mat, const uint32_t* vec, uint32_t* result, uint32_t n, uint32_t m, uint32_t s, uint32_t p)
@@ -28,7 +19,7 @@ void BlockMatVecProduct(const uint32_t* mat, const uint32_t* vec, uint32_t* resu
             uint32_t acc = 0;
             for (int j = 0; j < b; ++j) {
                 int col = col_start + j;
-                acc = mod_add(acc, mod_mul(row_ptr[col], vec[col], p), p);
+                acc = (acc + ((uint64_t)row_ptr[col] * vec[col]) % p) % p;
             }
             res_ptr[row] = acc;
         }
@@ -43,7 +34,7 @@ void MatVecProduct(const uint32_t* mat, const uint32_t* vec, uint32_t* result, u
 
         uint32_t acc = 0;
         for (int col = 0; col < m; ++col) {
-            acc = mod_add(acc, mod_mul(row_ptr[col], vec[col], p), p);
+            acc = (acc + ((uint64_t)row_ptr[col] * vec[col]) % p) % p ;
         }
 
         result[row] = acc;
@@ -65,8 +56,7 @@ void BlockVecMatProduct(const uint32_t* mat, const uint32_t* vec, uint32_t* resu
             uint32_t* res_ptr = result + blk * m;
 
             for (int col = 0; col < m; ++col) {
-                uint32_t prod = mod_mul(row_ptr[col], v, p);
-                res_ptr[col] = mod_add(res_ptr[col], prod, p);
+                res_ptr[col] = (res_ptr[col] + ((uint64_t)row_ptr[col] * v) % p) % p;
             }
         }
     }
