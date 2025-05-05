@@ -1,5 +1,5 @@
 g++ -std=c++17 -O3 -c tdm/NTT.cpp -o tdm/NTT.o -I/opt/homebrew/include
-ar rcs TDM/libNTT.a TDM/NTT.o
+ar rcs tdm/libNTT.a tdm/NTT.o
 
 g++ -std=c++17 -O3 -c mvp/mvp.cpp -o mvp/mvp.o -I/opt/homebrew/include
 ar rcs mvp/libMVP.a mvp/mvp.o
