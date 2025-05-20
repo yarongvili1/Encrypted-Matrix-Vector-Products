@@ -14,7 +14,7 @@ type LpnMVP struct {
 
 type LpnParams struct {
 	Field     dataobjects.Field
-	Epsi      float32
+	Epsi      float64
 	N         uint32
 	M         uint32
 	L         uint32
@@ -51,10 +51,12 @@ func (lpn *LpnMVP) KeyGen(seed int64) SecretKey {
 			M: params.M / params.M_1,
 			N: params.N,
 			// NOTE: Now TDM only support Q = 2^x + 1, Change this to Field later
-			Q:     params.P,
-			SeedL: seed + 1,
-			SeedP: seed + 500,
-			SeedR: seed + 1000,
+			Q:      params.P,
+			SeedL:  seed + 1,
+			SeedPL: seed + 1<<10,
+			SeedC:  seed + 1<<11,
+			SeedPR: seed + 1<<12,
+			SeedR:  seed + 1<<13,
 		},
 	}
 }

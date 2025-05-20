@@ -54,10 +54,10 @@ func RandomNoiseVector(n uint32, epsi float32, p uint32) []uint32 {
 	return vector
 }
 
-func RandomLPNNoiseVector(n uint32, epsi float32, field dataobjects.Field) []uint32 {
+func RandomLPNNoiseVector(n uint32, epsi float64, field dataobjects.Field) []uint32 {
 	vector := make([]uint32, n)
 	for i := range vector {
-		if rand.Float32() <= epsi {
+		if rand.Float64() <= epsi {
 			var val uint32
 			for {
 				val = field.SampleElement()
