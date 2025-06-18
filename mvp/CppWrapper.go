@@ -1,6 +1,7 @@
 package mvp
 
 /*
+#cgo CXXFLAGS: -std=c++17 -O3 -march=native  -I.
 #cgo CFLAGS: -I.
 #cgo LDFLAGS: -L. -lMVP -L/opt/homebrew/lib -lNTT -lntl -lgmp -lstdc++
 #include "mvp.h"

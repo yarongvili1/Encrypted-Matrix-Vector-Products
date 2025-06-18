@@ -40,7 +40,7 @@ This generates the following static libraries:
 Before running tests, set the appropriate environment variables **from the root directory** of this project:
 
 ```
-export CGO_CXXFLAGS="-I$(pwd)/tdm -I$(pwd)/ecc -I/usr/include"
+export CGO_CXXFLAGS="-std=c++17 -I$(pwd)/tdm -I$(pwd)/ecc -I/usr/include"
 export CGO_LDFLAGS="-L$(pwd)/tdm -L$(pwd)/ecc -lNTT -lReedSolomon -lntl -lgmp"
 ```
 
