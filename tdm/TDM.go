@@ -304,12 +304,11 @@ func GetCirculantMatrix(k, q uint32, seed int64) [][]uint32 {
 		poly[t] = uint32(rng.Intn(int(q)))
 	}
 
-	for i := uint32(0); i < k; i++ {
-		for t := uint32(0); t < k; t++ {
-			copy(S[t][t:k], poly[0:k-t])
-			copy(S[t][0:t], poly[k-t:k])
-		}
+	for t := uint32(0); t < k; t++ {
+		copy(S[t][t:k], poly[0:k-t])
+		copy(S[t][0:t], poly[k-t:k])
 	}
+
 	return S
 }
 
