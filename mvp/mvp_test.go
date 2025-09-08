@@ -68,7 +68,7 @@ func TestSlsnMVPComplete(t *testing.T) {
 	val := pi.Decode(sk, serverResponse, *aux)
 	fmt.Println("    Elapsed: ", time.Since(start))
 
-	target := make([]uint32, m)
+	target := dataobjects.AlignedMake[uint32](uint64(m))
 	BlockMatVecProduct(matrix.Data, query, target, m, l, 1, p)
 
 	for i := range target {
@@ -137,7 +137,7 @@ func TestLPNMVPComplete(t *testing.T) {
 	val := pi.Decode(sk, serverResponse, aux)
 	fmt.Println("    Elapsed: ", time.Since(start))
 
-	target := make([]uint32, m)
+	target := dataobjects.AlignedMake[uint32](uint64(m))
 	MatVecProduct(matrix.Data, query, target, m, l, p)
 
 	for i := range target {
@@ -185,7 +185,7 @@ func TestRingSlsnMVPComplete(t *testing.T) {
 	matrix := utils.GeneratePrimeFieldMatrix(pi.Params.M, pi.Params.L, p, seed)
 	query := utils.RandomPrimeFieldVector(pi.Params.L, pi.Params.P)
 
-	target := make([]uint32, m)
+	target := dataobjects.AlignedMake[uint32](uint64(m))
 	MatVecProduct(matrix.Data, query, target, m, l, p)
 
 	fmt.Printf("Running MVP with Database %d * %d \n", pi.Params.M, pi.Params.L)
@@ -234,7 +234,7 @@ func BenchmarkCleartextServerExecution(b *testing.B) {
 	p := uint32(65537)
 	seed := int64(1)
 	matrix := utils.GeneratePrimeFieldMatrix(m, l, p, seed)
-	result := make([]uint32, m)
+	result := dataobjects.AlignedMake[uint32](uint64(m))
 
 	var totalDuration time.Duration
 	b.ResetTimer()
@@ -432,6 +432,6 @@ func BenchmarkSLSNDecode(b *testing.B) {
 
 	b.StopTimer()
 
-	fmt.Printf("Benchmark of SLSN Answer For m = %d, l = %d, k = %d \n", m, l, k)
-	fmt.Printf("Average Answer time: %v\n", totalDuration/time.Duration(b.N))
+	fmt.Printf("Benchmark of SLSN Decode For m = %d, l = %d, k = %d \n", m, l, k)
+	fmt.Printf("Average Decode time: %v\n", totalDuration/time.Duration(b.N))
 }
