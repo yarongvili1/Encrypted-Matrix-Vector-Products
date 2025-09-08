@@ -349,6 +349,7 @@ func GetCirculantMatrix(k, q uint32, seed int64) [][]uint32 {
 			}
 		}
 	}
+
 	return S
 }
 
