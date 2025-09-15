@@ -13,7 +13,18 @@ import (
 
 // Test full flow correctness of Split-LSN MVP
 func TestSlsnMVPComplete(t *testing.T) {
+<<<<<<< Updated upstream
 	n, m, l, k, s, b := getParams()
+=======
+	m := uint32(1 << 10)
+	l := uint32(1 << 10)
+	k := uint32(1 << 4)
+	s := uint32(2)
+	n := k + l
+	b := n / s
+
+	n, m, l, k, s, b = getParams()
+>>>>>>> Stashed changes
 
 	p := uint32(65537)
 	seed := int64(1)
@@ -149,7 +160,11 @@ func TestRingSlsnMVPComplete(t *testing.T) {
 	p := uint32(65537)
 	seed := int64(1)
 
+<<<<<<< Updated upstream
 	n, m, l, k, s, b := getParams()
+=======
+	n, m, l, k, s, b = getParams()
+>>>>>>> Stashed changes
 
 	pi := &SlsnMVP{Params: SlsnParams{
 		Field: dataobjects.NewPrimeField(p),
@@ -425,16 +440,26 @@ func BenchmarkSLSNDecode(b *testing.B) {
 
 	b.StopTimer()
 
+<<<<<<< Updated upstream
 	fmt.Printf("Benchmark of SLSN Decoding For %d x %d DB(~%.2f MB), encoded to %d x %d with block size %d \n",
 		m, l, float64(m*l*4)/float64(1024*1024), m, n, block)
+=======
+	fmt.Printf("Benchmark of SLSN Answer For m = %d, l = %d, k = %d, b = %d \n", m, l, k, block)
+>>>>>>> Stashed changes
 	printBenchmarkExecutionTime(b.N)
 	fmt.Printf("Average Answer time: %s\n", totalDuration/time.Duration(b.N))
 }
 
 func getParams() (uint32, uint32, uint32, uint32, uint32, uint32) {
+<<<<<<< Updated upstream
 	l := 1 << 13
 	m := uint32(1<<26) / uint32(l)
 	ll, k, s, b := utils.Prms(128, 1.25, l)
+=======
+	l := 73
+	m := uint32(1<<20) / uint32(l)
+	ll, k, s, b := utils.Prms(128, 4, l)
+>>>>>>> Stashed changes
 	return ll + k, m, ll, k, s, b
 }
 

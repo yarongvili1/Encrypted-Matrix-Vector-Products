@@ -12,6 +12,22 @@ type Matrix struct {
 	Data      []uint32
 }
 
+type MatrixF4 struct {
+	Rows      uint32
+	Cols      uint32
+	EntryBits uint32
+	Bit1      []uint32 // length: Rows * Cols, coeff of 1
+	BitP      []uint32 // length: Rows * Cols, coeff of p
+	BitSum    []uint32 // Bit1 + Bitp
+}
+
+type VectorF4 struct {
+	Cols   uint32
+	Bit1   []uint32
+	BitP   []uint32
+	BitSum []uint32 // Bit1 + Bitp
+}
+
 func GenerateMatrix(rows, cols, entryBits uint32, seed int64) Matrix {
 	rng := rand.New(rand.NewSource(seed))
 
@@ -30,6 +46,33 @@ func GenerateMatrix(rows, cols, entryBits uint32, seed int64) Matrix {
 		Cols:      cols,
 		EntryBits: entryBits,
 		Data:      data,
+	}
+}
+
+func GenerateMatrixF4(rows, cols, entryBits uint32, seed int64) MatrixF4 {
+	rng := rand.New(rand.NewSource(seed))
+
+	dataSize := uint64(rows) * uint64(cols)
+
+	databit1 := make([]uint32, dataSize)
+	databitp := make([]uint32, dataSize)
+	databitsum := make([]uint32, dataSize)
+
+	bitmask := uint32((1 << entryBits) - 1)
+
+	for i := range databit1 {
+		databit1[i] = rng.Uint32() & bitmask
+		databitp[i] = rng.Uint32() & bitmask
+		databitsum[i] = databit1[i] ^ databitp[i]
+	}
+
+	return MatrixF4{
+		Rows:      rows,
+		Cols:      cols,
+		EntryBits: entryBits,
+		Bit1:      databit1,
+		BitP:      databitp,
+		BitSum:    databitsum,
 	}
 }
 

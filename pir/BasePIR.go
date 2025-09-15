@@ -1,13 +1,8 @@
 package pir
 
-/*
-#include "BitMVP.h"
-*/
-import "C"
 import (
 	"RandomLinearCodePIR/utils"
 	"math/rand"
-	"unsafe"
 )
 
 type BasePIR struct {
@@ -77,55 +72,81 @@ func (p *BasePIR) Encode(sk SecretKey, matrix Matrix) *Matrix {
 }
 
 func (p *BasePIR) Query(sk SecretKey, queryIndex uint64) (*BasePIRQuery, *BasePIRAux) {
-	vector_1 := SampleVectorFromNullSpace(p.Params.Cols, p.Params.CodewordLength, sk.LinearCodeKey)
+	queryVector := SampleVectorFromNullSpace(p.Params.Cols, p.Params.CodewordLength, sk.LinearCodeKey)
 
 	// Add Unit Vector to retrieve the ith column
-	vector_1[queryIndex%uint64(p.Params.Cols)] ^= 1
+	queryVector[queryIndex%uint64(p.Params.Cols)] ^= 1
 
 	// Calculate the mask for the final result
 	rng := rand.New(rand.NewSource(int64(sk.MaskKey) + int64((queryIndex/uint64(p.Params.Cols))/32)))
 
 	mask := uint32(0)
 
-	for i := range vector_1 {
-		mask ^= vector_1[i] * rng.Uint32()
+	for i := range queryVector {
+		mask ^= queryVector[i] * rng.Uint32()
 	}
-
-	vector_2 := make([]uint32, p.Params.CodewordLength)
 
 	flipVector := utils.RandomizeFlipVector(p.Params.NumberOfBlocks)
-
-	// TODO : Make sure it devides
-	blockSize := p.Params.CodewordLength / p.Params.NumberOfBlocks
-
-	index := uint32(0)
-	for ind, val := range flipVector {
-		index = uint32(blockSize) * uint32(ind)
-
-		if val == 0 {
-			for j := uint32(0); j < uint32(blockSize); j++ {
-				vector_2[index+j] = uint32(rand.Intn(2))
-			}
-		} else if val == 1 {
-			for j := uint32(0); j < uint32(blockSize); j++ {
-				vector_2[index+j] ^= vector_1[index+j]
-				vector_1[index+j] = uint32(rand.Intn(2))
-			}
-		} else {
-			for j := uint32(0); j < uint32(blockSize); j++ {
-				vector_2[index+j] = uint32(rand.Intn(2))
-				vector_1[index+j] ^= vector_2[index+j]
-			}
-		}
-	}
+	vec_1, vec_2 := makeVectors(queryVector, flipVector, len(queryVector), int(p.Params.NumberOfBlocks))
 
 	return &BasePIRQuery{
-			Vector_1: vector_1,
-			Vector_2: vector_2,
+			Vector_1: vec_1,
+			Vector_2: vec_2,
 		}, &BasePIRAux{
 			FlipVector: flipVector,
 			MaskValue:  mask,
 		}
+}
+
+// Generate vec_1, vec_2 from queryVector and flipVector, globally packed.
+func makeVectors(queryVector []uint32, flipVector []uint32,
+	codewordLength, nBlocks int) (vec1, vec2 []uint32) {
+
+	blockSize := codewordLength / nBlocks
+	vec1 = utils.PackBinaryVector(queryVector)
+	vec2 = make([]uint32, (codewordLength+31)>>5)
+
+	for b := 0; b < nBlocks; b++ {
+		blockStart := b * blockSize
+		blockEnd := blockStart + blockSize
+		if blockEnd > codewordLength {
+			blockEnd = codewordLength
+		}
+
+		wStart := blockStart >> 5
+		wEnd := (blockEnd - 1) >> 5
+
+		for w := wStart; w <= wEnd; w++ {
+			base := w << 5
+			lo := 0
+			if blockStart > base {
+				lo = blockStart - base
+			}
+			hi := 32
+			if blockEnd-base < 32 {
+				hi = blockEnd - base
+			}
+			mask := utils.WordMask(lo, hi)
+
+			switch flipVector[b] {
+			case 0:
+				// vec2 = random, vec1 unchanged
+				vec2[w] = (vec2[w] & ^mask) | (rand.Uint32() & mask)
+
+			case 1:
+				// vec2 ^= vec1, then vec1 = random
+				vec2[w] ^= vec1[w] & mask
+				vec1[w] = (vec1[w] & ^mask) | (rand.Uint32() & mask)
+
+			default:
+				// vec2 = random, then vec1 ^= vec2
+				r := rand.Uint32() & mask
+				vec2[w] = (vec2[w] & ^mask) | r
+				vec1[w] ^= r
+			}
+		}
+	}
+	return
 }
 
 func (p *BasePIR) Answer(matrix *Matrix, clientQuery *BasePIRQuery) *BasePIRAnswer {
@@ -138,14 +159,8 @@ func (p *BasePIR) Answer(matrix *Matrix, clientQuery *BasePIRQuery) *BasePIRAnsw
 	result1 := make([]uint32, cols*rows/block_size)
 	result2 := make([]uint32, cols*rows/block_size)
 
-	cVector_1 := (*C.uint32_t)(unsafe.Pointer(&clientQuery.Vector_1[0]))
-	cVector_2 := (*C.uint32_t)(unsafe.Pointer(&clientQuery.Vector_2[0]))
+	MatrixColXORByBlock2D(clientQuery.Vector_1, clientQuery.Vector_2, matrix.Data, result1, result2, rows, cols, block_size)
 
-	cMatrix := (*C.uint32_t)(unsafe.Pointer(&matrix.Data[0]))
-	cResult1 := (*C.uint32_t)(unsafe.Pointer(&result1[0]))
-	cResult2 := (*C.uint32_t)(unsafe.Pointer(&result2[0]))
-
-	C.MatrixColXORByBlock(cResult1, cResult2, cMatrix, cVector_1, cVector_2, (C.uint32_t)(rows), (C.uint32_t)(cols), (C.uint32_t)(block_size))
 	return &BasePIRAnswer{
 		Result_1: result1,
 		Result_2: result2,
