@@ -1,7 +1,7 @@
 package ecc
 
 /*
-#cgo CFLAGS: -I.
+#cgo CXXFLAGS: -std=c++17 -I/opt/homebrew/include
 #cgo LDFLAGS: -L. -lReedSolomon -L/opt/homebrew/lib -lNTT -lntl -lgmp -lstdc++
 #include "ReedSolomon.h"
 */

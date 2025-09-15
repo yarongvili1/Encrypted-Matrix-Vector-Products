@@ -4,7 +4,6 @@
 #include <algorithm>
 #include <cstring>
 #include "mvp.h"
-#include <mach/mach_time.h>
 #include <cassert>
 #include <mutex>
 #include <chrono>
@@ -67,6 +66,7 @@ static void BlockMatVecProduct_Impl(
     }
 }
 
+// Not used for now, need to implement the way of tuning the parameters.
 // -----------------------------------------------------------------------------
 // Non-template wrapper specifying default tuning knobs K=8,U=8,PF_DIST=16
 // -----------------------------------------------------------------------------
@@ -84,7 +84,7 @@ static inline void BlockMatVecProduct_Default(
 
 extern "C" {
 
-void BlockMatVecProduct(
+void BlockMatVecProduct_UnrolledPreload(
     const uint32_t* mat,
     const uint32_t* vec,
     uint32_t*       result,
@@ -95,6 +95,59 @@ void BlockMatVecProduct(
 ) {
     BlockMatVecProduct_Default(mat, vec, result, n, m, s, p);
 }
+
+// The most straight forward way of processing Mat Vec Product in blocks, works for flexible blocksize.
+void BlockMatVecProduct_StraightForward(
+    const uint32_t* __restrict__ mat,    // matrix: size n × m, row-major
+    const uint32_t* __restrict__ vec,    // vector: length m
+    uint32_t*       __restrict__ result, // output: size s × n, row-major blocks
+    uint32_t n, uint32_t m,
+    uint32_t s, uint32_t p
+) {
+    assert(m % s == 0);         // each block has b = m / s columns
+    const uint32_t b = m / s;
+
+    // Zero out the result buffer
+    std::memset(result, 0, size_t(n) * s * sizeof(uint32_t));
+
+    for (uint32_t row = 0; row < n; ++row) {
+        const uint32_t* row_ptr = mat + size_t(row) * m;
+
+        for (uint32_t blk = 0; blk < s; ++blk) {
+            uint64_t acc = 0;
+            uint32_t col_start = blk * b;
+
+            for (uint32_t j = 0; j < b; ++j) {
+                uint32_t col = col_start + j;
+                acc += uint64_t(row_ptr[col]) * vec[col];
+            }
+
+            // Store result at [blk][row] in block-row-major layout
+            result[size_t(blk) * n + row] = uint32_t(acc % p);
+        }
+    }
+}
+
+// If the matrix are already stored by blocks.
+void BlockMatVecProduct(const uint32_t* __restrict__ mat,    // matrix: size n × m, block-wise, row-major
+    const uint32_t* __restrict__ vec,    // vector: length m
+    uint32_t*       __restrict__ result, // output: size s × n, row-major blocks
+    uint32_t n, uint32_t m,
+    uint32_t s, uint32_t p
+) {
+    assert(m % s == 0);
+    uint32_t b = m / s;  // columns per block
+
+    for (uint32_t blk = 0; blk < s; ++blk) {
+        const uint32_t* mat_blk = mat + blk * n * b;
+        const uint32_t* vec_blk = vec + blk * b;
+        uint32_t* result_blk = result + blk * n;
+
+        // mat_blk is n × b (row-major)
+        MatVecProduct(mat_blk, vec_blk, result_blk, n, b, p);
+    }
+}
+
 
 // M x v
 void MatVecProduct(const uint32_t* mat, const uint32_t* vec, uint32_t* result, uint32_t n, uint32_t m, uint32_t p)

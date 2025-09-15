@@ -1,4 +1,4 @@
-package mvp
+package utils
 
 import (
 	"math"
@@ -22,7 +22,7 @@ func findk(sec float64, b int) int {
 	return int(sec)
 }
 
-func prms(sec, f float64, ll int) (uint32, uint32, uint32, uint32) {
+func Prms(sec, f float64, ll int) (uint32, uint32, uint32, uint32) {
 	b := int(math.Floor(f)) + 1
 	k := int(math.Ceil(sec * float64(b-1) / math.Log2(float64(b))))
 	l2 := int(math.Floor(float64(k) / (f - 1)))
@@ -41,7 +41,7 @@ func prms(sec, f float64, ll int) (uint32, uint32, uint32, uint32) {
 
 }
 
-func prms2(sec, f float64, ll int) (uint32, uint32, uint32, uint32, uint32) {
+func Prms2(sec, f float64, ll int) (uint32, uint32, uint32, uint32, uint32) {
 	b := int(math.Floor(f)) + 1
 	k := findk(sec, b)
 	l2 := int(math.Floor(float64(k) / (f - 1)))

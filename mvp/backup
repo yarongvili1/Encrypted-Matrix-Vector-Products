@@ -11,10 +11,18 @@ import (
 	"time"
 )
 
-// Test full flow correctness of Split-LSN MVP
 func TestSlsnMVPComplete(t *testing.T) {
-	n, m, l, k, s, b := getParams()
+	m := uint32(1 << 10)
+	l := uint32(1 << 10)
+	k := uint32(1 << 4)
+	k = 2600
+	s := uint32(2)
+	b := uint32(140)
+	s = (l + k) / b
+	// m, l, k, s = getParams()
 
+	n := k + l
+	// b := n / s
 	p := uint32(65537)
 	seed := int64(1)
 
@@ -31,7 +39,7 @@ func TestSlsnMVPComplete(t *testing.T) {
 
 	matrix := utils.GeneratePrimeFieldMatrix(pi.Params.M, pi.Params.L, p, seed)
 
-	fmt.Printf("\n\nRunning SLSN Variant MVP with Database %d * %d \n", pi.Params.M, pi.Params.L)
+	fmt.Printf("Running MVP with Database %d * %d \n", pi.Params.M, pi.Params.L)
 
 	query := utils.RandomPrimeFieldVector(pi.Params.L, pi.Params.P)
 
@@ -77,10 +85,11 @@ func TestSlsnMVPComplete(t *testing.T) {
 
 }
 
-// Test full flow correctness of LPN based MVP
 func TestLPNMVPComplete(t *testing.T) {
-	n, m, l, k, _, _ := getParams()
-
+	m := uint32(1 << 10)
+	l := uint32(1 << 10)
+	k := uint32(1 << 4)
+	n := k + l
 	p := uint32(65537)
 	seed := int64(1)
 	m_1 := uint32(4)
@@ -100,7 +109,7 @@ func TestLPNMVPComplete(t *testing.T) {
 
 	matrix := utils.GeneratePrimeFieldMatrix(pi.Params.M, pi.Params.L, p, seed)
 
-	fmt.Printf("\n\nRunning LPN Variant MVP with Database %d * %d \n", pi.Params.M, pi.Params.L)
+	fmt.Printf("Running MVP with Database %d * %d \n", pi.Params.M, pi.Params.L)
 
 	query := utils.RandomPrimeFieldVector(pi.Params.L, pi.Params.P)
 
@@ -144,12 +153,18 @@ func TestLPNMVPComplete(t *testing.T) {
 	}
 }
 
-// Test full flow correctness of Ring variant of Split-LSN MVP
 func TestRingSlsnMVPComplete(t *testing.T) {
+	m := uint32(1 << 10)
+	l := uint32(1 << 10)
+	k := uint32(1 << 4)
+	s := uint32(2)
+
+	// m, l, k, s = getParams()
+
+	n := k + l
+	b := n / s
 	p := uint32(65537)
 	seed := int64(1)
-
-	n, m, l, k, s, b := getParams()
 
 	pi := &SlsnMVP{Params: SlsnParams{
 		Field: dataobjects.NewPrimeField(p),
@@ -182,7 +197,7 @@ func TestRingSlsnMVPComplete(t *testing.T) {
 	target := make([]uint32, m)
 	MatVecProduct(matrix.Data, query, target, m, l, p)
 
-	fmt.Printf("\n\nRunning Ring-SLSN Variant MVP with Database %d * %d \n", pi.Params.M, pi.Params.L)
+	fmt.Printf("Running MVP with Database %d * %d \n", pi.Params.M, pi.Params.L)
 
 	fmt.Println("Generate Key...")
 	start := time.Now()
@@ -222,11 +237,15 @@ func TestRingSlsnMVPComplete(t *testing.T) {
 	}
 }
 
-// Benchmark cleartext server execution time for matrix-vector product
 func BenchmarkCleartextServerExecution(b *testing.B) {
-	printTestName("Benchmark ClearText")
+	fmt.Println("\n\n =================== ClearText =====================")
+
+	m := uint32(1) << 10
+	l := uint32(1) << 10
 	p := uint32(65537)
-	l, m, _, _, _, _ := getParams()
+
+	m, l, _, _ = getParams()
+
 	seed := int64(1)
 	matrix := utils.GeneratePrimeFieldMatrix(m, l, p, seed)
 	result := make([]uint32, m)
@@ -243,16 +262,22 @@ func BenchmarkCleartextServerExecution(b *testing.B) {
 	}
 
 	b.StopTimer()
-	fmt.Printf("Benchmark Cleartext MVP for %d x %d DB of size ~%.2f MB\n", m, l, float64(m*l*4)/float64(1024*1024))
-	printBenchmarkExecutionTime(b.N)
-	fmt.Printf("Average server execution time for m = %d, l = %d : %s\n", m, l, totalDuration/time.Duration(b.N))
+	fmt.Printf("Benchmark Execution For *** %d *** Times \n", b.N)
+	fmt.Printf("Average server execution time for m = %d, l = %d : %.5f\n", m, l, tt(totalDuration/time.Duration(b.N)))
 }
 
-// Benchmark query generation in Ring-based Split-LSN MVP
 func BenchmarkRingSLSNQuery(b *testing.B) {
-	printTestName("Benchmark Ring SLSN Query")
-	n, m, l, k, s, block := getParams()
+	fmt.Println("\n\n =================== Ring Query =====================")
 
+	m := uint32(1 << 10)
+	l := uint32(1 << 10)
+	k := uint32(1 << 4)
+	s := uint32(2)
+
+	m, l, k, s = getParams()
+
+	n := k + l
+	block := n / s
 	p := uint32(65537)
 	seed := int64(1)
 
@@ -300,16 +325,24 @@ func BenchmarkRingSLSNQuery(b *testing.B) {
 	b.StopTimer()
 
 	fmt.Printf("Ring SLSN For m = %d, l = %d, k = %d \n", m, l, k)
-	printBenchmarkExecutionTime(b.N)
-	fmt.Printf("Average Query time: %s\n", totalDuration/time.Duration(b.N))
-	fmt.Printf("Average Calculate Mask time: %s\n", unmaskDuration/time.Duration(b.N))
-	fmt.Printf("Pure Query Generation Time: %s\n", (totalDuration-unmaskDuration)/time.Duration(b.N))
+	fmt.Printf("Benchmark Execution For *** %d *** Times \n", b.N)
+	fmt.Printf("Average Query time: %.5f\n", tt(totalDuration/time.Duration(b.N)))
+	fmt.Printf("Average Calculate Mask time: %.5f\n", tt(unmaskDuration/time.Duration(b.N)))
+	fmt.Printf("Pure Query Generation Time: %.5f\n", tt((totalDuration-unmaskDuration)/time.Duration(b.N)))
 }
 
-// Benchmark query generation in Split-LSN MVP
 func BenchmarkSLSNQuery(b *testing.B) {
-	printTestName("Benchmark SLSN Query")
-	n, m, l, k, s, block := getParams()
+	fmt.Println("\n\n =================== Query =====================")
+
+	m := uint32(1 << 10)
+	l := uint32(1 << 10)
+	k := uint32(1 << 4)
+	s := uint32(2)
+
+	m, l, k, s = getParams()
+
+	n := k + l
+	block := n / s
 	p := uint32(65537)
 	seed := int64(1)
 
@@ -342,18 +375,25 @@ func BenchmarkSLSNQuery(b *testing.B) {
 
 	b.StopTimer()
 
-	fmt.Printf("Benchmark of SLSN Query For %d x %d DB(~%.2f MB), encoded to %d x %d with block size %d \n",
-		m, l, float64(m*l*4)/float64(1024*1024), m, n, block)
-	printBenchmarkExecutionTime(b.N)
-	fmt.Printf("Average Query time: %s\n", totalDuration/time.Duration(b.N))
-	fmt.Printf("Average Calculate Mask time: %s\n", unmaskDuration/time.Duration(b.N))
-	fmt.Printf("Pure Query Generation Time: %s\n", (totalDuration-unmaskDuration)/time.Duration(b.N))
+	fmt.Printf("SLSN For m = %d, l = %d, k = %d \n", m, l, k)
+	fmt.Printf("Benchmark Execution For *** %d *** Times \n", b.N)
+	fmt.Printf("Average Query time: %.5f\n", tt(totalDuration/time.Duration(b.N)))
+	fmt.Printf("Average Calculate Mask time: %.5f\n", tt(unmaskDuration/time.Duration(b.N)))
+	fmt.Printf("Pure Query Generation Time: %.5f\n", tt((totalDuration-unmaskDuration)/time.Duration(b.N)))
 }
 
-// Benchmark Server Answer time in Split-LSN MVP
 func BenchmarkSLSNAnswer(b *testing.B) {
-	printTestName("Benchmark SLSN Answer")
-	n, m, l, k, s, block := getParams()
+	fmt.Println("\n\n =================== Answer =====================")
+
+	m := uint32(1 << 10)
+	l := uint32(1 << 10)
+	k := uint32(1 << 4)
+	s := uint32(2)
+
+	m, l, k, s = getParams()
+
+	n := k + l
+	block := n / s
 	p := uint32(65537)
 	seed := int64(1)
 
@@ -384,16 +424,20 @@ func BenchmarkSLSNAnswer(b *testing.B) {
 
 	b.StopTimer()
 
-	fmt.Printf("Benchmark of SLSN Answer For %d x %d DB(~%.2f MB), encoded to %d x %d with block size %d \n",
-		m, l, float64(m*l*4)/float64(1024*1024), m, n, block)
-	printBenchmarkExecutionTime(b.N)
-	fmt.Printf("Average Answer time: %s\n", totalDuration/time.Duration(b.N))
+	fmt.Printf("Benchmark of SLSN Answer For m = %d, l = %d, k = %d \n", m, l, k)
+	fmt.Printf("Benchmark Execution For *** %d *** Times \n", b.N)
+	fmt.Printf("Average Answer time: %.5f\n", tt(totalDuration/time.Duration(b.N)))
 }
 
-// Benchmark Decode time in Split-LSN MVP
 func BenchmarkSLSNDecode(b *testing.B) {
-	printTestName("Benchmark SLSN Decode")
-	n, m, l, k, s, block := getParams()
+	fmt.Println("\n\n =================== Decode =====================")
+	// m := uint32(1 << 10)
+	// l := uint32(1 << 10)
+	// k := uint32(1 << 4)
+	// s := uint32(2)
+	m, l, k, s := getParams()
+	n := k + l
+	block := n / s
 	p := uint32(65537)
 	seed := int64(1)
 
@@ -425,23 +469,83 @@ func BenchmarkSLSNDecode(b *testing.B) {
 
 	b.StopTimer()
 
-	fmt.Printf("Benchmark of SLSN Decoding For %d x %d DB(~%.2f MB), encoded to %d x %d with block size %d \n",
-		m, l, float64(m*l*4)/float64(1024*1024), m, n, block)
-	printBenchmarkExecutionTime(b.N)
-	fmt.Printf("Average Answer time: %s\n", totalDuration/time.Duration(b.N))
+	fmt.Printf("Benchmark of SLSN Answer For m = %d, l = %d, k = %d \n", m, l, k)
+	fmt.Printf("Benchmark Execution For *** %d *** Times \n", b.N)
+	fmt.Printf("Average Answer time: %.5f\n", tt(totalDuration/time.Duration(b.N)))
 }
 
-func getParams() (uint32, uint32, uint32, uint32, uint32, uint32) {
-	l := 1 << 13
-	m := uint32(1<<26) / uint32(l)
-	ll, k, s, b := utils.Prms(128, 1.25, l)
-	return ll + k, m, ll, k, s, b
+func getParams() (uint32, uint32, uint32, uint32) {
+	// l, k, b := uint32(32768), uint32(8532), uint32(590)
+	l, k, b := uint32(10000), uint32(2600), uint32(140)
+	// l, k, b := uint32(8192), uint32(2054), uint32(109)
+	// l, k, b := uint32(1024), uint32(260), uint32(6)
+	// l, k, b := uint32(512), uint32(128), uint32(2)
+	// l, k, b := uint32(4096), uint32(1052), uint32(44)
+
+	s := (l + k) / b
+	m := uint32(1 << 10)
+	return m, l, k, s
 }
 
-func printTestName(name string) {
-	fmt.Printf("\n\n =================== %s ===================\n", name)
+func tt(dur time.Duration) float64 {
+	fmt.Println(dur)
+	return float64(dur.Nanoseconds()) / 1e6
 }
 
-func printBenchmarkExecutionTime(n int) {
-	fmt.Printf("Benchmark Execution For *** %d *** Times \n", n)
+func NTestRingSLSNQuery(t *testing.T) {
+	fmt.Println("\n\n =================== Ring Query =====================")
+
+	m := uint32(1 << 10)
+	l := uint32(1 << 10)
+	k := uint32(1 << 4)
+	s := uint32(2)
+
+	m, l, k, s = getParams()
+
+	n := k + l
+	block := n / s
+	p := uint32(65537)
+	seed := int64(1)
+
+	pi := &SlsnMVP{Params: SlsnParams{
+		Field: dataobjects.NewPrimeField(p),
+		S:     s,
+		K:     k,
+		N:     n,
+		M:     m,
+		L:     l,
+		B:     block,
+		P:     p,
+	}}
+
+	code := linearcode.GetLinearCode(
+		linearcode.LinearCodeConfig{
+			Name:  linearcode.Vandermonde,
+			K:     k,
+			L:     l,
+			Field: dataobjects.NewPrimeField(p),
+		},
+	)
+
+	ring := &RingSlsnMVP{
+		SlsnMVP:           *pi,
+		LinearCodeEncoder: code,
+	}
+
+	sk := ring.KeyGen(seed)
+
+	var totalDuration time.Duration
+	var unmaskDuration time.Duration
+
+	query := utils.RandomPrimeFieldVector(pi.Params.L, pi.Params.P)
+	start := time.Now()
+	_, aux := ring.Query(sk, query)
+	duration := time.Since(start)
+	totalDuration += duration
+	unmaskDuration += aux.Dur
+
+	fmt.Printf("Ring SLSN For m = %d, l = %d, k = %d \n", m, l, k)
+	fmt.Printf("Average Query time: %.5f\n", tt(totalDuration))
+	fmt.Printf("Average Calculate Mask time: %.5f\n", tt(unmaskDuration))
+	fmt.Printf("Pure Query Generation Time: %.5f\n", tt((totalDuration - unmaskDuration)))
 }

@@ -86,10 +86,13 @@ func (slsn *SlsnMVP) Encode(sk SecretKey, input dataobjects.Matrix, mask []uint3
 		encoded[j] = params.Field.Add(encoded[j], mask[j])
 	}
 
+	blockwizeEncodedMatrix := make([]uint32, len(encoded))
+	TransformToBlockwise(encoded, blockwizeEncodedMatrix, params.M, params.N, params.S)
+
 	return &dataobjects.Matrix{
 		Rows: params.M,
 		Cols: params.N,
-		Data: encoded,
+		Data: blockwizeEncodedMatrix,
 	}
 }
 
