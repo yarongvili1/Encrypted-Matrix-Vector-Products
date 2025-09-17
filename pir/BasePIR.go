@@ -59,7 +59,6 @@ func (p *BasePIR) Encode(sk SecretKey, matrix Matrix) *Matrix {
 		for j := uint32(0); j < M; j++ {
 			packedData[index] ^= rng.Uint32()
 			index += p.Params.PackedSize
-
 		}
 	}
 

@@ -261,9 +261,43 @@ func BenchmarkMixedSLSNAnswer(b *testing.B) {
 	fmt.Printf("\tAverage Answer Time with repeat times: %d: %v \n\n", b.N, totalDuration/time.Duration(b.N))
 }
 
+func TestMixedSLSNAnswer(t *testing.T) {
+	row, col, k, block := getParams()
+
+	pi := &MixedSLSNPIR{
+		Params: MixedSLSNParams{
+			Rows:           row,
+			Cols:           col,
+			NumberOfBlocks: block,
+			CodewordLength: col + k,
+			PackedSize:     row / 32,
+		},
+	}
+
+	encodedMatrix := GenerateMatrixF4(pi.Params.CodewordLength, pi.Params.PackedSize, 32, 1)
+
+	var totalDuration time.Duration
+
+	vec_1 := utils.RandomizeBinaryVectorWithSeed(pi.Params.CodewordLength, 1)
+	vec_2 := utils.RandomizeBinaryVectorWithSeed(pi.Params.CodewordLength, 2)
+	vec_sum := make([]uint32, pi.Params.CodewordLength)
+	for j := range vec_1 {
+		vec_sum[j] = vec_1[j] ^ vec_2[j]
+	}
+	fmt.Println(vec_1)
+	fmt.Println(vec_2)
+	start := time.Now()
+	ans := pi.Answer(&encodedMatrix, &MixedSLSNPIRQuery{vec: VectorF4{Cols: col, Bit1: vec_1, BitP: vec_2, BitSum: vec_sum}})
+	fmt.Println(ans)
+	totalDuration += time.Since(start)
+
+	fmt.Printf("\nBenchmark Server Response For Encoded Database with %d x %d entires of size ~%fMB. \n",
+		encodedMatrix.Rows, encodedMatrix.Cols, float64(encodedMatrix.Rows/1024.0)*float64(encodedMatrix.Cols)/1024.0*32/8.0)
+}
+
 func getParams() (uint32, uint32, uint32, uint32) {
 	col := 1 << 14 // will be rounded accordingly
-	row := uint32(1 << 18)
+	row := uint32(1 << 19)
 	_, l, k, _, b := utils.Prms2(128, 1.25, col)
 	return row, l, k, b
 }

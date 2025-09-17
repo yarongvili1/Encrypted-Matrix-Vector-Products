@@ -57,3 +57,33 @@ go test -bench=. ./...
 This will compile the Go code, link against the native C++ libraries, and execute the performance benchmarks.
 
 ---
+
+
+### 🍏 macOS Notes (Apple Silicon / Intel Mac)
+
+On macOS, OpenSSL is not provided by default. This project requires **libcrypto** (part of OpenSSL).
+
+1. Install OpenSSL via Homebrew:
+   ```bash
+   brew install openssl@3
+   ```
+
+2. Export flags so Go/cgo can find it:
+   ```bash
+   export CGO_CFLAGS="-I$(brew --prefix openssl@3)/include $CGO_CFLAGS"
+   export CGO_LDFLAGS="-L$(brew --prefix openssl@3)/lib $CGO_LDFLAGS"
+   ```
+
+   > 💡 Tip: these variables are already set automatically if you run `./run.sh` from the project root.
+
+---
+
+### 🛠 Example full setup on macOS
+
+```bash
+brew install gmp ntl openssl@3
+./run.sh
+export CGO_CFLAGS="-I$(brew --prefix openssl@3)/include -I$(pwd)/tdm -I$(pwd)/ecc"
+export CGO_LDFLAGS="-L$(brew --prefix openssl@3)/lib -L$(pwd)/tdm -L$(pwd)/ecc -lNTT -lReedSolomon -lntl -lgmp -lcrypto"
+go test -bench=. ./...
+```

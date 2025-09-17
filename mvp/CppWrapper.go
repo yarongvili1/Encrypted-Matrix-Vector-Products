@@ -1,14 +1,17 @@
 package mvp
 
 /*
-#cgo CXXFLAGS: -std=c++17 -O3 -march=native  -I.
+#cgo CXXFLAGS: -std=c++17 -Ofast -fomit-frame-pointer -march=native -mtune=native -I.
 #cgo CFLAGS: -I.
-#cgo LDFLAGS: -L. -lMVP -L/opt/homebrew/lib -lNTT -lntl -lgmp -lstdc++
+#cgo LDFLAGS: -L. -L../tdm -lMVP -L/opt/homebrew/lib -lNTT -lntl -lgmp -lstdc++
 #include "mvp.h"
 #include "matrixShapeTransform.h"
 */
 import "C"
-import "unsafe"
+import (
+	"runtime"
+	"unsafe"
+)
 
 func BlockMatVecProduct(mat, vec, out []uint32, row, col, numBlock, p uint32) {
 	C.BlockMatVecProduct(
@@ -17,6 +20,9 @@ func BlockMatVecProduct(mat, vec, out []uint32, row, col, numBlock, p uint32) {
 		(*C.uint32_t)(unsafe.Pointer(&out[0])),
 		C.uint32_t(row), C.uint32_t(col), C.uint32_t(numBlock), C.uint32_t(p),
 	)
+	runtime.KeepAlive(mat)
+	runtime.KeepAlive(vec)
+	runtime.KeepAlive(out)
 }
 
 func MatVecProduct(mat, vec, out []uint32, row, col, p uint32) {
@@ -26,6 +32,9 @@ func MatVecProduct(mat, vec, out []uint32, row, col, p uint32) {
 		(*C.uint32_t)(unsafe.Pointer(&out[0])),
 		C.uint32_t(row), C.uint32_t(col), C.uint32_t(p),
 	)
+	runtime.KeepAlive(mat)
+	runtime.KeepAlive(vec)
+	runtime.KeepAlive(out)
 }
 
 func BlockVecMatProduct(mat, vec, out []uint32, row, col, numBlock, p uint32) {
@@ -35,6 +44,9 @@ func BlockVecMatProduct(mat, vec, out []uint32, row, col, numBlock, p uint32) {
 		(*C.uint32_t)(unsafe.Pointer(&out[0])),
 		C.uint32_t(row), C.uint32_t(col), C.uint32_t(numBlock), C.uint32_t(p),
 	)
+	runtime.KeepAlive(mat)
+	runtime.KeepAlive(vec)
+	runtime.KeepAlive(out)
 }
 
 func TransformToBlockwise(mat, matBlocked []uint32, n, m, s uint32) {

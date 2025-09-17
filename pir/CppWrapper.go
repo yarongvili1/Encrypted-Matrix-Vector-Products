@@ -8,7 +8,6 @@ import (
 	"unsafe"
 )
 
-<<<<<<< HEAD
 func VecMatMulF4(bit1Result, bitPResult, bit1Matrix, bitPMatrix, bit1Vec, bitPVec []uint32, rows, cols uint32) {
 	// (a + bp) * (x + yp)
 	ax := make([]uint32, cols)
