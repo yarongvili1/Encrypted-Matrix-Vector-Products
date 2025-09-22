@@ -13,8 +13,12 @@ import (
 
 // Test full flow correctness of Split-LSN MVP
 func TestSlsnMVPComplete(t *testing.T) {
-	n, m, l, k, s, b := getParams()
-
+	m := uint32(1 << 10)
+	l := uint32(1 << 10)
+	k := uint32(1 << 4)
+	s := uint32(2)
+	n := k + l
+	b := n / s
 	p := uint32(65537)
 	seed := int64(1)
 
@@ -79,8 +83,10 @@ func TestSlsnMVPComplete(t *testing.T) {
 
 // Test full flow correctness of LPN based MVP
 func TestLPNMVPComplete(t *testing.T) {
-	n, m, l, k, _, _ := getParams()
-
+	m := uint32(1 << 10)
+	l := uint32(1 << 10)
+	k := uint32(1 << 4)
+	n := k + l
 	p := uint32(65537)
 	seed := int64(1)
 	m_1 := uint32(4)
@@ -146,10 +152,14 @@ func TestLPNMVPComplete(t *testing.T) {
 
 // Test full flow correctness of Ring variant of Split-LSN MVP
 func TestRingSlsnMVPComplete(t *testing.T) {
+	m := uint32(1 << 10)
+	l := uint32(1 << 10)
+	k := uint32(1 << 4)
+	s := uint32(2)
+	n := k + l
+	b := n / s
 	p := uint32(65537)
 	seed := int64(1)
-
-	n, m, l, k, s, b := getParams()
 
 	pi := &SlsnMVP{Params: SlsnParams{
 		Field: dataobjects.NewPrimeField(p),
@@ -434,6 +444,7 @@ func BenchmarkSLSNDecode(b *testing.B) {
 func getParams() (uint32, uint32, uint32, uint32, uint32, uint32) {
 	l := 1 << 13
 	m := uint32(1<<26) / uint32(l)
+
 	ll, k, s, b := utils.Prms(128, 1.25, l)
 	return ll + k, m, ll, k, s, b
 }

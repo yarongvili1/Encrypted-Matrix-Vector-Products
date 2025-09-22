@@ -36,7 +36,8 @@ func (rmvp *RingSlsnMVP) Encode(sk SecretKey, input dataobjects.Matrix, mask []u
 
 	params.Field.AddVectors(encoded, 0, encoded, 0, mask, 0, uint64(len(encoded)))
 
-	blockwizeEncodedMatrix := make([]uint32, len(encoded))
+	blockwizeEncodedMatrix := dataobjects.AlignedMake[uint32](uint64(len(encoded)))
+
 	TransformToBlockwise(encoded, blockwizeEncodedMatrix, params.M, params.N, params.S)
 
 	return &dataobjects.Matrix{
