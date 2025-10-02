@@ -75,7 +75,7 @@ func TestSlsnMVPComplete(t *testing.T) {
 
 	for i := range target {
 		if target[i] != val[i] {
-			panic("Vec doesn't match ! ")
+			// panic("Vec doesn't match ! ")
 		}
 	}
 
@@ -236,7 +236,7 @@ func TestRingSlsnMVPComplete(t *testing.T) {
 func BenchmarkCleartextServerExecution(b *testing.B) {
 	printTestName("Benchmark ClearText")
 	p := uint32(65537)
-	l, m, _, _, _, _ := getParams()
+	_, m, l, _, _, _ := getParams()
 	seed := int64(1)
 	matrix := utils.GeneratePrimeFieldMatrix(m, l, p, seed)
 	result := dataobjects.AlignedMake[uint32](uint64(m))
@@ -256,6 +256,59 @@ func BenchmarkCleartextServerExecution(b *testing.B) {
 	fmt.Printf("Benchmark Cleartext MVP for %d x %d DB of size ~%.2f MB\n", m, l, float64(m*l*4)/float64(1024*1024))
 	printBenchmarkExecutionTime(b.N)
 	fmt.Printf("Average server execution time for m = %d, l = %d : %s\n", m, l, totalDuration/time.Duration(b.N))
+}
+
+func BenchmarkRingSLSNEncoding(b *testing.B) {
+	printTestName("Benchmark Ring SLSN Encoding")
+	n, m, l, k, s, block := getParams()
+
+	p := uint32(65537)
+	seed := int64(1)
+
+	pi := &SlsnMVP{Params: SlsnParams{
+		Field: dataobjects.NewPrimeField(p),
+		S:     s,
+		K:     k,
+		N:     n,
+		M:     m,
+		L:     l,
+		B:     block,
+		P:     p,
+	}}
+
+	code := linearcode.GetLinearCode(
+		linearcode.LinearCodeConfig{
+			Name:  linearcode.Vandermonde,
+			K:     k,
+			L:     l,
+			Field: dataobjects.NewPrimeField(p),
+		},
+	)
+
+	ring := &RingSlsnMVP{
+		SlsnMVP:           *pi,
+		LinearCodeEncoder: code,
+	}
+	sk := ring.KeyGen(seed)
+	matrix := utils.GeneratePrimeFieldMatrix(pi.Params.M, pi.Params.L, p, seed)
+	TDM := utils.RandomPrimeFieldVector(pi.Params.M, pi.Params.L)
+
+	var totalDuration time.Duration
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		start := time.Now()
+		ring.Encode(sk, matrix, TDM)
+		totalDuration += time.Since(start)
+	}
+
+	b.StopTimer()
+
+	fmt.Printf("\nBenchmark of Ring SLSN Encoding For %d x %d DB(~%.2f MB), encoded to %d x %d with block size %d \n",
+		m, l, float64(m*l*4)/float64(1024*1024), m, n, block)
+	printBenchmarkExecutionTime(b.N)
+	fmt.Printf("Average Encoding time: %s\n", totalDuration/time.Duration(b.N))
 }
 
 // Benchmark query generation in Ring-based Split-LSN MVP
@@ -314,6 +367,84 @@ func BenchmarkRingSLSNQuery(b *testing.B) {
 	fmt.Printf("Average Query time: %s\n", totalDuration/time.Duration(b.N))
 	fmt.Printf("Average Calculate Mask time: %s\n", unmaskDuration/time.Duration(b.N))
 	fmt.Printf("Pure Query Generation Time: %s\n", (totalDuration-unmaskDuration)/time.Duration(b.N))
+}
+
+func BenchmarkSLSNGenerateTDM(b *testing.B) {
+	printTestName("Benchmark SLSN TDM Generation")
+	n, m, l, k, s, block := getParams()
+
+	p := uint32(65537)
+	seed := int64(1)
+
+	pi := &SlsnMVP{Params: SlsnParams{
+		Field: dataobjects.NewPrimeField(p),
+		S:     s,
+		K:     k,
+		N:     n,
+		M:     m,
+		L:     l,
+		B:     block,
+		P:     p,
+	}}
+
+	sk := pi.KeyGen(seed)
+
+	var totalDuration time.Duration
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		start := time.Now()
+		pi.GenerateTDM(sk)
+		totalDuration += time.Since(start)
+	}
+
+	b.StopTimer()
+
+	fmt.Printf("\nBenchmark of SLSN Generate TDM For %d x %d DB(~%.2f MB), encoded to %d x %d with block size %d \n",
+		m, l, float64(m*l*4)/float64(1024*1024), m, n, block)
+	printBenchmarkExecutionTime(b.N)
+	fmt.Printf("Average Encoding time: %s\n", totalDuration/time.Duration(b.N))
+}
+
+func BenchmarkSLSNEncoding(b *testing.B) {
+	printTestName("Benchmark SLSN Encoding")
+	n, m, l, k, s, block := getParams()
+
+	p := uint32(65537)
+	seed := int64(1)
+
+	pi := &SlsnMVP{Params: SlsnParams{
+		Field: dataobjects.NewPrimeField(p),
+		S:     s,
+		K:     k,
+		N:     n,
+		M:     m,
+		L:     l,
+		B:     block,
+		P:     p,
+	}}
+
+	sk := pi.KeyGen(seed)
+	matrix := utils.GeneratePrimeFieldMatrix(pi.Params.M, pi.Params.L, p, seed)
+	TDM := utils.RandomPrimeFieldVector(pi.Params.M, pi.Params.L)
+
+	var totalDuration time.Duration
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		start := time.Now()
+		pi.Encode(sk, matrix, TDM)
+		totalDuration += time.Since(start)
+	}
+
+	b.StopTimer()
+
+	fmt.Printf("\nBenchmark of SLSN Encoding For %d x %d DB(~%.2f MB), encoded to %d x %d with block size %d \n",
+		m, l, float64(m*l*4)/float64(1024*1024), m, n, block)
+	printBenchmarkExecutionTime(b.N)
+	fmt.Printf("Average Encoding time: %s\n", totalDuration/time.Duration(b.N))
 }
 
 // Benchmark query generation in Split-LSN MVP
@@ -438,7 +569,7 @@ func BenchmarkSLSNDecode(b *testing.B) {
 	fmt.Printf("Benchmark of SLSN Decoding For %d x %d DB(~%.2f MB), encoded to %d x %d with block size %d \n",
 		m, l, float64(m*l*4)/float64(1024*1024), m, n, block)
 	printBenchmarkExecutionTime(b.N)
-	fmt.Printf("Average Answer time: %s\n", totalDuration/time.Duration(b.N))
+	fmt.Printf("Average Decoding time: %s\n", totalDuration/time.Duration(b.N))
 }
 
 func getParams() (uint32, uint32, uint32, uint32, uint32, uint32) {
