@@ -1,8 +1,9 @@
 #ifndef _MOD_SIMD_H
 #define _MOD_SIMD_H
 
-// #include <emmintrin.h>  // SSE2 intrinsics
-// #include <immintrin.h>
+#if defined(__x86_64__) || defined(_M_X64)
+#include <immintrin.h>
+#endif
 #include <stdint.h>
 #include <stddef.h>
 
