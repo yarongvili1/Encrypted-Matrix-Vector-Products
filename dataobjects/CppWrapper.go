@@ -3,7 +3,7 @@ package dataobjects
 /*
 #cgo CXXFLAGS: -std=c++17 -Ofast -fomit-frame-pointer -march=native -mtune=native -I.
 #cgo CFLAGS: -I.
-#cgo LDFLAGS: -L. -L/opt/homebrew/lib -ldataobjects -lNTT -lntl -lgmp -lstdc++
+#cgo LDFLAGS: -L. -L/opt/homebrew/lib -ldataobjects -lNTT -lstdc++
 #include "fields.h"
 */
 import "C"
